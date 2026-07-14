@@ -1,0 +1,56 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import PostMeta from '../components/PostMeta.astro';
+import { postStats } from '../utils/post-stats';
+
+const posts = (await getCollection('blog')).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const base = `${import.meta.env.BASE_URL}/`;
+const tags = Array.from(posts.reduce((counts, post) => {
+	for (const tag of post.data.tags ?? []) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+	return counts;
+}, new Map<string, number>()).entries()).sort(([a], [b]) => a.localeCompare(b, 'zh-CN'));
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head><BaseHead title="标签 | losh" description="按标签浏览所有文章" /></head>
+	<body>
+		<Header />
+		<main>
+			<section class="tags-intro">
+				<p class="eyebrow">TAGS</p>
+				<h1>标签</h1>
+				<p>按主题筛选文章。</p>
+				<div class="tag-filter" aria-label="按标签筛选">
+					<button class="active" type="button" data-tag="">全部 <small>{posts.length}</small></button>
+					{tags.map(([tag, count]) => <button type="button" data-tag={tag}>#{tag} <small>{count}</small></button>)}
+				</div>
+			</section>
+			<ul class="post-list tag-posts">
+				{posts.map((post) => <li data-tags={(post.data.tags ?? []).join('|')}><a href={`${base}blog/${post.id}/`}><h2>{post.data.title}</h2><p>{post.data.description}</p><PostMeta {...post.data} {...postStats(post.body)} /></a></li>)}
+			</ul>
+			<p class="tag-empty" hidden>这个标签下还没有文章。</p>
+		</main>
+		<Footer />
+	</body>
+</html>
+
+<script is:inline>
+	const buttons = document.querySelectorAll('.tag-filter button');
+	const posts = document.querySelectorAll('.tag-posts li');
+	const empty = document.querySelector('.tag-empty');
+	buttons.forEach((button) => button.addEventListener('click', () => {
+		const tag = button.dataset.tag;
+		let visible = 0;
+		posts.forEach((post) => {
+			const show = !tag || post.dataset.tags.split('|').includes(tag);
+			post.hidden = !show;
+			visible += Number(show);
+		});
+		buttons.forEach((item) => item.classList.toggle('active', item === button));
+		empty.hidden = visible > 0;
+	}));
+</script>

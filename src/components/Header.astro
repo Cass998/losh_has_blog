@@ -24,6 +24,7 @@ const active = (href: string) => path === href || (href !== base && path.startsW
 	<nav aria-label="主导航">
 		<a class:list={[{ active: active(base) }]} aria-current={active(base) ? 'page' : undefined} href={base}>首页</a>
 		<a class:list={[{ active: active(`${base}blog/`) }]} aria-current={active(`${base}blog/`) ? 'page' : undefined} href={`${base}blog/`}>文章</a>
+		<a class:list={[{ active: active(`${base}tags/`) }]} aria-current={active(`${base}tags/`) ? 'page' : undefined} href={`${base}tags/`}>标签</a>
 		<a class:list={[{ active: active(`${base}archives/`) }]} aria-current={active(`${base}archives/`) ? 'page' : undefined} href={`${base}archives/`}>归档</a>
 		<a class:list={[{ active: active(`${base}about/`) }]} aria-current={active(`${base}about/`) ? 'page' : undefined} href={`${base}about/`}>关于</a>
 		<a href="https://github.com/Cass998" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
