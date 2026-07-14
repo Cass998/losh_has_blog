@@ -1,0 +1,52 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+
+const posts = (await getCollection('blog')).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const base = `${import.meta.env.BASE_URL}/`;
+const year = posts[0]?.data.pubDate.getUTCFullYear() ?? new Date().getUTCFullYear();
+const postDays = new Map<string, number>();
+for (const post of posts) {
+	const key = post.data.pubDate.toISOString().slice(0, 10);
+	postDays.set(key, (postDays.get(key) ?? 0) + 1);
+}
+const timeline = Array.from(posts.reduce((groups, post) => {
+	const key = post.data.pubDate.toISOString().slice(0, 10);
+	groups.set(key, [...(groups.get(key) ?? []), post]);
+	return groups;
+}, new Map<string, typeof posts>()).entries());
+const months = Array.from({ length: 12 }, (_, month) => {
+	const first = new Date(Date.UTC(year, month, 1));
+	const total = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+	return { month, firstDay: first.getUTCDay(), total };
+});
+const monthName = new Intl.DateTimeFormat('zh-CN', { month: 'short', timeZone: 'UTC' });
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head><BaseHead title="归档 | losh" description="按时间整理的所有文章" /></head>
+	<body>
+		<Header />
+		<main>
+			<section class="archive-intro">
+				<p class="eyebrow">ARCHIVE</p>
+				<h1>写作轨迹</h1>
+				<p>共 {posts.length} 篇文章，按日期留下每一次记录。</p>
+			</section>
+			<section class="archive-calendar" aria-labelledby="calendar-title">
+				<div class="archive-heading"><h2 id="calendar-title">{year} 写作日历</h2><span>深色日期代表发布文章</span></div>
+				<div class="calendar-months">
+					{months.map(({ month, firstDay, total }) => <section class="calendar-month" aria-label={`${year}年${month + 1}月`}><h3>{monthName.format(new Date(Date.UTC(year, month, 1)))}</h3><div class="weekdays" aria-hidden="true"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div><div class="calendar-days">{Array.from({ length: firstDay }, () => <i />)}{Array.from({ length: total }, (_, index) => { const day = index + 1; const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const count = postDays.get(key) ?? 0; return count ? <a href={`#${key}`} aria-label={`${key} 发布 ${count} 篇文章`} title={`${key} · ${count} 篇文章`}>{day}</a> : <span>{day}</span>; })}</div></section>)}
+				</div>
+			</section>
+			<section class="timeline" aria-labelledby="timeline-title">
+				<div class="archive-heading"><h2 id="timeline-title">时间轴</h2><span>从新到旧</span></div>
+				{timeline.map(([id, dayPosts]) => { const date = dayPosts[0].data.pubDate; return <article class="timeline-item" id={id}><time datetime={date.toISOString()}><b>{date.getUTCDate()}</b><span>{date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', timeZone: 'UTC' })}</span></time><div class="timeline-posts">{dayPosts.map((post) => <section><a href={`${base}blog/${post.id}/`}><h3>{post.data.title}</h3></a><p>{post.data.description}</p>{post.data.tags?.length ? <small>{post.data.tags.join(' · ')}</small> : null}</section>)}</div></article>; })}
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>
