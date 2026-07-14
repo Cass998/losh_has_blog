@@ -1,0 +1,30 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+
+type Props = CollectionEntry<'blog'>['data'];
+const { title, description, pubDate, updatedDate, tags } = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head><BaseHead title={`${title} | losh`} description={description} /></head>
+	<body>
+		<Header />
+		<main>
+			<article class="prose">
+				<header class="article-header">
+					<time datetime={pubDate.toISOString()}>{pubDate.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}</time>
+					<h1>{title}</h1>
+					<p>{description}</p>
+					{tags?.length ? <div class="tags">{tags.map((tag) => <span>{tag}</span>)}</div> : null}
+					{updatedDate ? <small>更新于 {updatedDate.toLocaleDateString('zh-CN')}</small> : null}
+				</header>
+				<slot />
+			</article>
+		</main>
+		<Footer />
+	</body>
+</html>

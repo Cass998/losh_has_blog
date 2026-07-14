@@ -1,0 +1,19 @@
+---
+import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+
+const base = `${import.meta.env.BASE_URL}/`;
+---
+
+<aside class="sidebar">
+	<a class="avatar" href={base} aria-label="返回首页">
+		<img src={`${base}avatar.svg`} alt="戴巫师帽的小猫头鹰" width="112" height="112" />
+	</a>
+	<h1><a href={base}>{SITE_TITLE}</a></h1>
+	<p>{SITE_DESCRIPTION}</p>
+	<nav aria-label="主导航">
+		<a href={base}>首页</a>
+		<a href={`${base}blog/`}>文章</a>
+		<a href={`${base}about/`}>关于</a>
+		<a href="https://github.com/Cass998" target="_blank" rel="noreferrer">GitHub</a>
+	</nav>
+</aside>

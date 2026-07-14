@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="戴巫师帽的小猫头鹰">
+  <rect width="160" height="160" rx="80" fill="#5d628d"/>
+  <path d="M48 66 61 31l15 31M112 66 99 31 84 62" fill="#2b2941" stroke="#e5c68b" stroke-width="4" stroke-linejoin="round"/>
+  <ellipse cx="80" cy="98" rx="47" ry="43" fill="#b77854"/>
+  <circle cx="61" cy="87" r="22" fill="#f6e7c6"/><circle cx="99" cy="87" r="22" fill="#f6e7c6"/>
+  <circle cx="64" cy="89" r="9" fill="#29263a"/><circle cx="96" cy="89" r="9" fill="#29263a"/>
+  <path d="M72 105h16l-8 11z" fill="#e5c68b"/>
+  <path d="M62 124q18 13 36 0" fill="none" stroke="#493043" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="47" cy="117" r="3" fill="#e8a4a4"/><circle cx="113" cy="117" r="3" fill="#e8a4a4"/>
+</svg>
