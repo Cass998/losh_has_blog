@@ -1,19 +1,42 @@
 ---
+import { getCollection } from 'astro:content';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
 const base = `${import.meta.env.BASE_URL}/`;
+const path = Astro.url.pathname;
+const posts = await getCollection('blog');
+const tagCount = new Set(posts.flatMap((post) => post.data.tags ?? [])).size;
+const active = (href: string) => path === href || (href.endsWith('/blog/') && path.startsWith(href));
 ---
 
 <aside class="sidebar">
-	<a class="avatar" href={base} aria-label="返回首页">
-		<img src={`${base}avatar.svg`} alt="戴巫师帽的小猫头鹰" width="112" height="112" />
-	</a>
-	<h1><a href={base}>{SITE_TITLE}</a></h1>
-	<p>{SITE_DESCRIPTION}</p>
+	<div class="sidebar-card">
+		<a class="avatar" href={base} aria-label="返回首页">
+			<img src={`${base}avatar.svg`} alt="戴巫师帽的小猫头鹰" width="112" height="112" />
+		</a>
+		<p class="status"><span aria-hidden="true"></span> ONLINE / WRITING</p>
+		<h1><a href={base}>{SITE_TITLE}</a></h1>
+		<p class="bio">{SITE_DESCRIPTION}</p>
+		<div class="site-stats" aria-label="站点统计">
+			<span><b>{posts.length}</b>文章</span><span><b>{tagCount}</b>标签</span><span><b>∞</b>思考</span>
+		</div>
+	</div>
 	<nav aria-label="主导航">
-		<a href={base}>首页</a>
-		<a href={`${base}blog/`}>文章</a>
-		<a href={`${base}about/`}>关于</a>
-		<a href="https://github.com/Cass998" target="_blank" rel="noreferrer">GitHub</a>
+		<a class:list={[{ active: active(base) }]} aria-current={active(base) ? 'page' : undefined} href={base}>首页</a>
+		<a class:list={[{ active: active(`${base}blog/`) }]} aria-current={active(`${base}blog/`) ? 'page' : undefined} href={`${base}blog/`}>文章</a>
+		<a class:list={[{ active: active(`${base}about/`) }]} aria-current={active(`${base}about/`) ? 'page' : undefined} href={`${base}about/`}>关于</a>
+		<a href="https://github.com/Cass998" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
 	</nav>
+	<button class="theme-toggle" type="button" aria-label="切换深浅色主题"><span class="theme-icon" aria-hidden="true">◐</span><span>切换主题</span></button>
 </aside>
+
+<script is:inline>
+	const key = 'losh-theme';
+	const root = document.documentElement;
+	const applyTheme = (theme) => {
+		root.dataset.theme = theme;
+		root.style.colorScheme = theme;
+		localStorage.setItem(key, theme);
+	};
+	document.querySelector('.theme-toggle')?.addEventListener('click', () => applyTheme(root.dataset.theme === 'light' ? 'dark' : 'light'));
+</script>
