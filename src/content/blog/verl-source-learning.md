@@ -1,12 +1,12 @@
 ---
-title: 'veRL 源码学习网站'
-description: '从 LLM 与强化学习基础出发，沿 veRL V1 源码走完 rollout、奖励和参数更新。'
+title: 'veRL 强化学习与源码学习实验室'
+description: '从零理解强化学习，完成第一个 veRL 实验，再沿 V1 源码走到自定义算法与性能优化。'
 pubDate: '2026-07-14'
 tags: ['veRL', '强化学习', '源码阅读']
 ---
 
-我整理了一套 veRL 网页学习内容，覆盖 LLM/RL 预备知识、PPO 与 GRPO、V1 源码调用链、数据结构，以及配置、奖励函数、性能采集和调试实践。
+我把 veRL 学习内容重新整理成了一条面向初学者的六阶段路线：先补齐 LLM、概率与强化学习直觉，再理解 Policy Gradient、PPO、GRPO，随后完成一个可验证的训练 step，最后进入 veRL V1 源码、自定义算法与性能优化。
 
-> [进入 veRL 源码学习网站 →](https://cass998.github.io/losh_has_blog/verl-learning/)
+> [进入 veRL 学习实验室 →](https://cass998.github.io/losh_has_blog/verl-learning/)
 
-内容绑定具体源码提交，并用架构图和时序图串起从 rollout 到参数更新的完整过程。
+课程包含六周学习计划、常见疑问、手算练习、检查点与实验产物清单。框架行为绑定 veRL 源码提交 `e5687fce`，并用架构图和时序图串起 prompt、rollout、reward、advantage、update 与权重同步的完整闭环。
