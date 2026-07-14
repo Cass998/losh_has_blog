@@ -3,6 +3,8 @@ import { getCollection } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
+import PostMeta from '../components/PostMeta.astro';
+import { postStats } from '../utils/post-stats';
 
 const posts = (await getCollection('blog')).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 const base = `${import.meta.env.BASE_URL}/`;
@@ -44,7 +46,7 @@ const monthName = new Intl.DateTimeFormat('zh-CN', { month: 'short', timeZone: '
 			</section>
 			<section class="timeline" aria-labelledby="timeline-title">
 				<div class="archive-heading"><h2 id="timeline-title">时间轴</h2><span>从新到旧</span></div>
-				{timeline.map(([id, dayPosts]) => { const date = dayPosts[0].data.pubDate; return <article class="timeline-item" id={id}><time datetime={date.toISOString()}><b>{date.getUTCDate()}</b><span>{date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', timeZone: 'UTC' })}</span></time><div class="timeline-posts">{dayPosts.map((post) => <section><a href={`${base}blog/${post.id}/`}><h3>{post.data.title}</h3></a><p>{post.data.description}</p>{post.data.tags?.length ? <small>{post.data.tags.join(' · ')}</small> : null}</section>)}</div></article>; })}
+				{timeline.map(([id, dayPosts]) => { const date = dayPosts[0].data.pubDate; return <article class="timeline-item" id={id}><time datetime={date.toISOString()}><b>{date.getUTCDate()}</b><span>{date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', timeZone: 'UTC' })}</span></time><div class="timeline-posts">{dayPosts.map((post) => <section><a href={`${base}blog/${post.id}/`}><h3>{post.data.title}</h3></a><p>{post.data.description}</p><PostMeta {...post.data} {...postStats(post.body)} /></section>)}</div></article>; })}
 			</section>
 		</main>
 		<Footer />

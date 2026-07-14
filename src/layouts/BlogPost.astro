@@ -3,9 +3,10 @@ import type { CollectionEntry } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
+import PostMeta from '../components/PostMeta.astro';
 
-type Props = CollectionEntry<'blog'>['data'];
-const { title, description, pubDate, updatedDate, tags } = Astro.props;
+type Props = CollectionEntry<'blog'>['data'] & { wordCount: number; readingMinutes: number };
+const { title, description, pubDate, updatedDate, tags, wordCount, readingMinutes } = Astro.props;
 ---
 
 <!doctype html>
@@ -16,11 +17,9 @@ const { title, description, pubDate, updatedDate, tags } = Astro.props;
 		<main>
 			<article class="prose">
 				<header class="article-header">
-					<time datetime={pubDate.toISOString()}>{pubDate.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}</time>
 					<h1>{title}</h1>
 					<p>{description}</p>
-					{tags?.length ? <div class="tags">{tags.map((tag) => <span>{tag}</span>)}</div> : null}
-					{updatedDate ? <small>更新于 {updatedDate.toLocaleDateString('zh-CN')}</small> : null}
+					<PostMeta {pubDate} {updatedDate} {tags} {wordCount} {readingMinutes} />
 				</header>
 				<slot />
 			</article>

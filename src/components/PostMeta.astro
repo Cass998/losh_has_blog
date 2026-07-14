@@ -1,0 +1,20 @@
+---
+interface Props {
+	pubDate: Date;
+	updatedDate?: Date;
+	tags?: string[];
+	wordCount: number;
+	readingMinutes: number;
+}
+
+const { pubDate, updatedDate, tags, wordCount, readingMinutes } = Astro.props;
+const date = (value: Date) => value.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+---
+
+<div class="post-meta" aria-label="文章信息">
+	<span>发表 <time datetime={pubDate.toISOString()}>{date(pubDate)}</time></span>
+	{updatedDate ? <span>更新 <time datetime={updatedDate.toISOString()}>{date(updatedDate)}</time></span> : null}
+	{tags?.length ? <span>标签 {tags.map((tag) => <b>#{tag}</b>)}</span> : null}
+	<span>字数 {wordCount.toLocaleString('zh-CN')}</span>
+	<span>阅读 {readingMinutes} 分钟</span>
+</div>
