@@ -10,3 +10,8 @@ tags: ['veRL', '强化学习', '源码阅读']
 > [进入 veRL 学习实验室 →](https://cass998.github.io/losh_has_blog/verl-learning/)
 
 课程包含六周学习计划、常见疑问、手算练习、检查点与实验产物清单。框架行为绑定 veRL 源码提交 `e5687fce`，并用架构图和时序图串起 prompt、rollout、reward、advantage、update 与权重同步的完整闭环。
+
+如果你已经能跑通训练，建议直接进入两章系统设计主线：
+
+- [Single Controller、HybridFlow 与模块化后端](https://cass998.github.io/losh_has_blog/verl-learning/internals/architecture)
+- [Ray 基础、角色分工、代码位置与启动条件](https://cass998.github.io/losh_has_blog/verl-learning/internals/workers)

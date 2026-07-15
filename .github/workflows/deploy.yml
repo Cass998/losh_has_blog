@@ -27,6 +27,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix learning-sites/llm-systems
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

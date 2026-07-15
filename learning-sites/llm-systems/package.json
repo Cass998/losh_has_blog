@@ -1,0 +1,22 @@
+{
+  "name": "llm-systems-learning",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev . --host 127.0.0.1",
+    "build": "vitepress build .",
+    "build:deploy": "BASE_PATH=/losh_has_blog/llm-systems/ OUT_DIR=../../public/llm-systems vitepress build .",
+    "check:diagrams": "node scripts/check-mermaid.mjs",
+    "preview": "vitepress preview . --host 127.0.0.1"
+  },
+  "overrides": {
+    "vite": "6.4.3"
+  },
+  "devDependencies": {
+    "dompurify": "3.4.12",
+    "markdown-it-mathjax3": "4.3.2",
+    "mermaid": "11.16.0",
+    "vitepress": "1.6.4",
+    "vitepress-plugin-mermaid": "2.0.17"
+  }
+}

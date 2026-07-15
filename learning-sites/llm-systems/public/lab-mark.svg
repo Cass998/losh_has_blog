@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-labelledby="title">
+  <title id="title">LLM 系统学习实验室</title>
+  <rect width="40" height="40" rx="10" fill="#173e46"/>
+  <path d="M11 12v16h7M29 12v16h-7" fill="none" stroke="#f7f1e3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M15 23c3-7 7 3 10-6" fill="none" stroke="#e56b47" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="15" cy="23" r="2" fill="#f2bb4d"/>
+  <circle cx="25" cy="17" r="2" fill="#f2bb4d"/>
+</svg>

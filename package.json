@@ -7,7 +7,7 @@
 	},
 	"scripts": {
 		"dev": "astro dev",
-		"build": "astro build",
+		"build": "npm --prefix learning-sites/llm-systems run build:deploy && astro build",
 		"preview": "astro preview",
 		"astro": "astro"
 	},
