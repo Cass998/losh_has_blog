@@ -4,8 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "vitepress dev . --host 127.0.0.1",
-    "build": "vitepress build .",
-    "build:deploy": "BASE_PATH=/losh_has_blog/llm-systems/ OUT_DIR=../../public/llm-systems vitepress build .",
+    "check": "npm run check:links && npm run check:source-refs && npm run check:diagrams",
+    "check:links": "node scripts/check-links.mjs",
+    "check:source-refs": "node scripts/check-source-refs.mjs",
+    "build": "npm run check && vitepress build .",
+    "build:deploy": "npm run check && BASE_PATH=/losh_has_blog/llm-systems/ OUT_DIR=../../public/llm-systems vitepress build .",
     "check:diagrams": "node scripts/check-mermaid.mjs",
     "preview": "vitepress preview . --host 127.0.0.1"
   },

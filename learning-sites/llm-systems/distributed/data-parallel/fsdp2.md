@@ -187,4 +187,6 @@ FSDP2 params/optimizer 是 DTensor shards。保存应使用 distributed state di
 
 你应能从 global tensor/mesh/placements 得到 local shard；画 FSDP2 param lifecycle；解释 bottom-up+root、reshard/prefetch/HSDP 的权衡；说明为什么 data/loss/FSDP/TP groups 不可混用。
 
+继续沿固定 PyTorch 源码逐函数阅读：[FSDPState、FSDPParamGroup 与 AG/RS 状态机](../internals/fsdp2-source)，并在[源码驱动实践](../practice/source-labs)完成 DCP round-trip。
+
 下一阶段进入[Megatron Core 总体设计](../model-parallel/megatron)。

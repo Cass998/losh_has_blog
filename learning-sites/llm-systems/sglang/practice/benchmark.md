@@ -31,7 +31,7 @@ SGLang 当前提供不同层级的 benchmark：
 先启动服务，再运行：
 
 ```bash
-MODEL=qwen/qwen2.5-0.5b-instruct
+MODEL=Qwen/Qwen2.5-0.5B-Instruct
 
 python3 -m sglang.bench_serving \
   --backend sglang \
@@ -190,4 +190,4 @@ input/output throughput：
 
 你应能解释为什么 `concurrency=128` 与 `request_rate=128` 不是同一个实验，为什么 prefix cache A/B 要固定请求顺序，以及为什么 kernel microbenchmark 不能直接证明生产 p99。
 
-下一节进入[进程与通信架构](../internals/architecture)，把指标对应到具体进程。
+下一节进入[进程与通信架构](../internals/architecture)，把指标对应到具体进程；需要可直接填写的命令、预期证据、失败分支与验收表时，使用[实验工作簿](./lab-workbook)。

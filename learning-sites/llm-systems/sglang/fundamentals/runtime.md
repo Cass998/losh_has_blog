@@ -75,6 +75,8 @@ flowchart LR
 
 关键点：SGLang 的 Scheduler 不只是“发命令的 CPU 服务”。每个 scheduler rank 进程还构造 `TpModelWorker → ModelRunner → model`，通常拥有一张 GPU。
 
+如果要核对每条箭头对应的消息类、ZMQ socket、TP entry rank 广播和异常清理，不要只停在这张概念图，继续看[进程与消息逐跳追踪](../internals/message-flow)。
+
 ## 一个普通 step 做什么
 
 [`Scheduler.run_event_loop()`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/managers/scheduler.py#L1457) 最小化后是：

@@ -52,6 +52,8 @@ gradient accumulation 期间参数不更新，grad buffer 累积。第 $k$ 个 m
 
 它没有直接调用 `optimizer.step()`；职责边界到 loss 和 metrics 为止。
 
+固定代码的细节值得逐项核对：[`1699–1741`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1699) 保存 labels、关闭 cache、给 MoE/Liger 增加 kwargs 后才调父类；[`1751–1796`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1751) 对 chunked/普通 logits 分别统计 entropy 与 accuracy；[`1798–1814`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1798) 再按 attention/position 统计 input tokens。日志中的 `num_tokens` 不是 supervised token 数，不能拿它当 labels 密度。
+
 ## 父类怎样取得 loss
 
 [`Trainer.compute_loss()`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1953) 大致有三条：
@@ -70,6 +72,8 @@ flowchart TD
 ```
 
 标准 causal LM 收到 `labels` 时通常在 model forward 内完成 shift 与 cross entropy。自定义 model 若不返回 loss，Trainer 会报错；自定义 `compute_loss_func` 则必须正确处理 labels、有效 items 和 accumulation。
+
+固定 causal loss 本体是 Transformers [`ForCausalLMLoss` 49–71](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/loss/loss_utils.py#L49)：logits 先转 float，labels 右 pad 后左移，flatten 后交 `fixed_cross_entropy`。因此不同 model family 是否走该映射，需查 model 的 `loss_type/loss_function`，不能仅凭类名猜。
 
 ## 普通 NLL 与 chunked NLL
 
@@ -103,7 +107,7 @@ $$
 \frac{\sum_k\sum_{t\in S_k}\ell_t}{\sum_k|S_k|}
 $$
 
-Transformers Trainer 有 `num_items_in_batch` 与 `average_tokens_across_devices` 等逻辑帮助按 items/tokens 归一化，但自定义 model/loss 是否接受并正确使用该参数决定最终语义。修改 loss 后要用不等长 micro-batches 与“拼成一个大 batch”的 gradients 做数值对照。
+固定 Trainer 先在 [`get_batch_samples` 2112–2127](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L2112) 一次取齐一个 update 的 micro-batches；[`_get_num_items_in_batch` 2129–2189](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L2129) 仅在 model 接受 loss kwargs 或有 custom loss 时计数，并对 causal LM 使用 `labels[...,1:] != -100`。`average_tokens_across_devices=True` 时才跨 ranks 求和。自定义 model/loss 是否接受并正确使用该参数决定最终语义；修改 loss 后要用不等长 micro-batches 与“拼成一个大 batch”的 gradients 做数值对照。
 
 ## `training_step()` 到 backward
 
@@ -118,6 +122,8 @@ Transformers Trainer 有 `num_items_in_batch` 与 `average_tokens_across_devices
 
 Accelerator 根据 backend 选择普通 backward、GradScaler、DeepSpeed engine 等。不要在外层再手工 `loss.backward()`，否则重复反传。
 
+这条分派的固定源码是 Accelerate [`Accelerator.backward` 2818](https://github.com/huggingface/accelerate/blob/665444ceb62211f2b410d0d0fdb4bc013c5effdf/src/accelerate/accelerator.py#L2818)。Trainer 在 [`1939–1949`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1939) 判断是否自行除 accumulation steps，DeepSpeed 时传 `scale_wrt_gas=False`，随后只调用一次 accelerator backward。
+
 ## Optimizer step 前后
 
 通用 loop 还会：
@@ -131,6 +137,21 @@ Accelerator 根据 backend 选择普通 backward、GradScaler、DeepSpeed engine
 7. 更新 state/callback，触发 log/eval/save。
 
 所以看到 LR 在变但参数不变时，查 optimizer overflow/grad 是否存在；看到 `global_step` 比 dataloader batch 少，查 accumulation，而不是认为漏数据。
+
+真实顺序在 [`_run_epoch` 1702–1747](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1702) 与 [`1766–1787`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1766)：前者以 optimizer update 为外层循环、micro-batch 为内层循环并为非最后 microstep 使用 no-sync；后者 clip、optimizer step、检查 skipped、scheduler step、zero grad、global step++。这也解释了为何 step 后再读 `.grad` 常得到 `None`。
+
+## 一次 update 的源码对照表
+
+| 对象 | 进入时 shape/状态 | 离开时变化 | 最小断言 |
+| --- | --- | --- | --- |
+| batch | ids/labels `[B,S]` | 被移到 device | keys 与 shape 符合 model signature |
+| logits/hidden | 普通 `[B,S,V]` 或 chunked hidden `[B,S,H]` | 得到 scalar loss | loss finite；有效 target 数正确 |
+| micro loss | scalar | backward 累到 grad | 非最后 microstep 参数未变 |
+| gradient | trainable params only | DDP sync/clip | adapter/full 参数集合符合设计 |
+| optimizer | param groups + state | `step()` 更新参数 | 至少一个目标参数 delta>0 |
+| scheduler/state | LR + global step | 未 overflow 才 scheduler；global step++ | update 数而非 batch 数 |
+
+完整断点实验见[源码反推主实验](./source-walkthrough)。
 
 ## 混合精度的对象
 

@@ -162,7 +162,7 @@ flowchart TD
 
 ## Forward 后为什么还要 sampling
 
-模型 forward 产生 logits，生成系统还要按每请求参数执行：
+模型 forward 先产生 hidden states；在固定提交的 V2 generate 主线中，Core 看到 `execute_model()` 返回 `None` 后调用 `sample_tokens(grammar_output)`，后者才选择需要的 hidden positions、调用模型 `compute_logits()` 并执行：
 
 - repetition/presence/frequency penalties；
 - bad words、allowed tokens 或 grammar mask；
@@ -203,10 +203,12 @@ engine step
 ## 源码练习
 
 1. 在 `gpu_worker.py` 找 Runner V1/V2 的选择条件，并从实际启动配置判断走哪条。
-2. 在对应 Runner 的 `execute_model()` 中给“更新状态、准备输入、forward、sample”各画一个框。
+2. 若启动日志选择 V2，在 `execute_model()` 中标出“更新状态、准备输入、forward、保存 `execute_model_state`”，再沿 Core 的 `model_output is None` 分支进入 `sample_tokens()`；若选择 V1，则在其 `execute_model()` 内标出合并的 forward+sample，并说明为何 Core 不会再次采样。
 3. 任选一个请求的 position 与 block table，手算 slot mapping。
 4. 用同一负载比较默认与 `--enforce-eager`：记录启动 ready time、稳态 ITL、吞吐和显存，而不是只看其中一个。
 
 ## 通关标准
 
-你应能解释：Worker 与 Runner 分别拥有什么；为何 decode 不需要重传完整历史 token；block table 和 slot mapping 的区别；compile 与 CUDA Graph 各省什么；以及为什么 eager 是诊断开关而非默认优化答案。下一节把 Worker 放进 [TP、PP、DP 与多节点](./distributed)。
+你应能解释：Worker 与 Runner 分别拥有什么；为何 decode 不需要重传完整历史 token；block table 和 slot mapping 的区别；compile 与 CUDA Graph 各省什么；以及为什么 eager 是诊断开关而非默认优化答案。
+
+要把这里的接口展开到 Llama 层、attention KV 写入、TP linear、logits 与 sampler，请进入[模型 forward、Paged KV 与采样](./model-forward-sampling)；随后再把 Worker 放进 [TP、PP、DP 与多节点](./distributed)。

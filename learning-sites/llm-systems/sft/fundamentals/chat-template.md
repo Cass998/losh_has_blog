@@ -27,6 +27,8 @@ flowchart LR
 
 Transformers 的入口是 [`PreTrainedTokenizerBase.apply_chat_template()`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/tokenization_utils_base.py#L3002)。TRL 的 `SFTTrainer` 对 conversational dataset 调用它，并可请求 `return_assistant_tokens_mask=True`。
 
+继续读固定实现的 3135–3143 行会看到：渲染后调用 tokenizer 时明确 `add_special_tokens=False`。这证明直接 `apply_chat_template(tokenize=True)` 不会再让 tokenizer 自动补一轮 BOS/EOS；若你先渲染字符串再单独 tokenize，必须自行复现这个开关。
+
 一个抽象模板可能渲染为：
 
 ```text
@@ -85,7 +87,11 @@ Transformers 的入口是 [`PreTrainedTokenizerBase.apply_chat_template()`](http
 
 上面把 EOT 排除在 loss 外；模型可能没学会停止。应逐 token 验证 end-of-turn 是否被 mask 为有效 label。
 
-固定 TRL 在 `assistant_only_loss=True` 且模板没有 marker 时，会尝试为已知模型家族换用 training template；入口逻辑见 [`SFTTrainer.__init__`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L921)。这不是所有自定义模型都自动安全，仍需审计实际模板。
+固定 TRL 在 `assistant_only_loss=True` 时先要求 conversational dataset，再检测 generation marker、尝试为已知模型家族换 training template，并检查停止 token 是否落在监督 span 内；真实分支见 [`SFTTrainer.__init__` 1219–1240](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1219)。
+
+“尝试”不是对所有模板生效。[`get_training_chat_template` 875–1024](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/chat_template_utils.py#L875) 只为源码列举的模板提供补丁，未知且不兼容的模板在 1021–1024 行报错。是否训练停止 token 的探针位于 [`is_chat_template_stop_token_trained` 747–813](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/chat_template_utils.py#L747)，warning 也不等于自动修复。
+
+Transformers 怎样把 Jinja 字符 span 变成 token mask，可直接读 [`apply_chat_template` 3146–3167](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/tokenization_utils_base.py#L3146)：对每个 generation 字符区间调用 `char_to_token`，再把对应 token 位置置 1。截断导致起始字符越界时会停止处理后续 span，因此长对话必须在截断后检查 mask。
 
 ## Prefix preservation 与多轮/工具调用
 
@@ -129,6 +135,80 @@ for name, messages in cases.items():
 - 推理 prompt 末尾有正确 generation cue；
 - append message 后旧前缀保持不变；
 - tokenize(rendered) 与直接 tokenize 模式语义一致。
+
+### 可直接运行的 golden probe
+
+```python
+# MODEL 必须固定 revision；示例要求 tokenizer 自带 chat template。
+import hashlib
+import json
+import os
+from transformers import AutoTokenizer
+
+model_id = os.environ["MODEL"]
+revision = os.environ["REVISION"]
+template_name = os.environ.get("CHAT_TEMPLATE_NAME")
+tok = AutoTokenizer.from_pretrained(model_id, revision=revision)
+# chat_template 可以是字符串，也可以是多模板 dict。统一通过公开解析入口
+# 选出本次真正使用的 Jinja 字符串；多模板且无 default 时需显式给名称。
+selected_template = tok.get_chat_template(template_name)
+messages = [
+    {"role": "system", "content": "回答要简短。"},
+    {"role": "user", "content": "2+3=?"},
+    {"role": "assistant", "content": "5。"},
+]
+
+rendered = tok.apply_chat_template(
+    messages, chat_template=selected_template, tokenize=False
+)
+out = tok.apply_chat_template(
+    messages,
+    chat_template=selected_template,
+    tokenize=True,
+    return_dict=True,
+    return_assistant_tokens_mask=True,
+)
+ids = out["input_ids"]
+mask = out["assistant_masks"]
+assert len(ids) == len(mask) and any(mask)
+assert all(bit in (0, 1) for bit in mask)
+
+# 直接 tokenize 的实现就是 add_special_tokens=False；这条断言防重复 BOS/EOS。
+manual = tok(rendered, add_special_tokens=False)["input_ids"]
+assert ids == manual
+
+prompt = messages[:-1]
+prompt_ids = tok.apply_chat_template(
+    prompt,
+    chat_template=selected_template,
+    tokenize=True,
+    return_dict=False,
+    add_generation_prompt=True,
+)
+assert len(prompt_ids) > 0
+print(json.dumps({
+    "template_name": template_name or "resolved-default",
+    "template_sha256": hashlib.sha256(selected_template.encode()).hexdigest(),
+    "ids": ids,
+    "assistant_positions": [i for i, bit in enumerate(mask) if bit],
+    "prompt_tail": prompt_ids[-8:],
+}, ensure_ascii=False, indent=2))
+```
+
+```bash
+MODEL=your/model REVISION=full-commit python template_probe.py > template-golden.json
+```
+
+多模板 tokenizer 需要再设置 `CHAT_TEMPLATE_NAME=具体名称`。预期不是某组通用 token id，而是：退出码 0、assistant positions 非空、直接/间接 tokenization 相同，并把“解析后的模板名称 + hash”纳入版本控制。若报“模板不支持 generation”，不要伪造全 1 mask；先选择/修正训练模板，再逐 token 检查 EOT。
+
+## 源码反推的四个互斥/依赖条件
+
+| 条件 | 固定源码 | 结论 |
+| --- | --- | --- |
+| assistant mask 请求 | [`3092–3093`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/tokenization_utils_base.py#L3092) | 必须同时 `tokenize=True, return_dict=True` |
+| continue final message | [`3112–3118`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/tokenization_utils_base.py#L3112) | 不能与 generation prompt 或 assistant mask 同时使用 |
+| conversational prompt-completion | [`1464–1481`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1464) | prompt 单独编码时加 generation cue，full 编码时取 assistant mask |
+| mask 为空 | [`1521–1527`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1521) | 任一样本无 assistant token 时直接 RuntimeError |
 
 ## 训练/部署一致性清单
 

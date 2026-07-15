@@ -86,6 +86,8 @@ recv requests
 
 准入失败可能表示“本轮放不下”，也可能表示请求永远不合法。调用者必须区分并防止一个不可运行请求永久卡住队列。
 
+`PrefillAdder` 实际同时维护 input、chunk、KV、request row 四类预算；中间 chunk 怎样缓存并在最后一段转入 decode，见[Chunked Prefill 源码状态机](./chunked-prefill)。
+
 ## `ScheduleBatch` 不是请求列表那么简单
 
 [`ScheduleBatch`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/managers/schedule_batch.py#L1760) 连接控制面与设备执行：

@@ -33,11 +33,22 @@ lesson:
 保持[上一课](./first-server)的服务运行，在另一个终端执行：
 
 ```bash
-export MODEL=Qwen/Qwen2.5-0.5B-Instruct
+export MODEL=Qwen/Qwen3-0.6B
+export MODEL_REVISION=c1899de289a04d12100db370d81485cdf75e47ca
+export TOKENIZER_DIR="$(python - <<'PY'
+from huggingface_hub import snapshot_download
+print(snapshot_download(
+    repo_id="Qwen/Qwen3-0.6B",
+    revision="c1899de289a04d12100db370d81485cdf75e47ca",
+))
+PY
+)"
+test -d "$TOKENIZER_DIR"
 
 vllm bench serve \
   --backend vllm \
   --model "$MODEL" \
+  --tokenizer "$TOKENIZER_DIR" \
   --endpoint /v1/completions \
   --dataset-name random \
   --random-input-len 1024 \
@@ -62,6 +73,7 @@ for rate in 1 2 4 8 16; do
   vllm bench serve \
     --backend vllm \
     --model "$MODEL" \
+    --tokenizer "$TOKENIZER_DIR" \
     --endpoint /v1/completions \
     --dataset-name random \
     --random-input-len 1024 \
@@ -95,6 +107,7 @@ flowchart LR
 vllm bench serve \
   --backend vllm \
   --model "$MODEL" \
+  --tokenizer "$TOKENIZER_DIR" \
   --endpoint /v1/completions \
   --dataset-name random \
   --random-input-len 1024 \
@@ -146,6 +159,7 @@ TPOT（time per output token）常按“去掉首 token 后的生成时长 / 后
 vllm bench serve \
   --backend openai-chat \
   --model "$MODEL" \
+  --tokenizer "$TOKENIZER_DIR" \
   --endpoint /v1/chat/completions \
   --dataset-name custom \
   --dataset-path ./sanitized-prompts.jsonl \

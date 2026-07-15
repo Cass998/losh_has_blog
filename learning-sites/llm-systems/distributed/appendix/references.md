@@ -17,6 +17,7 @@ lesson:
 
 | 项目 | 提交 | 课程用途 |
 | --- | --- | --- |
+| PyTorch | [`e11b512`](https://github.com/pytorch/pytorch/tree/e11b512fef37205cc3b83872eabd92c3cdf05a28) | DDP C++ Reducer、DeviceMesh/DTensor、FSDP2、DCP |
 | Megatron-LM/Core | [`82e9dc6`](https://github.com/NVIDIA/Megatron-LM/tree/82e9dc69c9e6f8c27681f2cb6856a188187edf6b) | TP/SP/PP/CP/EP、distributed optimizer、DCP |
 | TorchTitan | [`fec3e19`](https://github.com/pytorch/torchtitan/tree/fec3e196a4ceb87bfc87fb4f1a36a538d7e98ee4) | FSDP2/DTensor/DeviceMesh 与 PyTorch 原生训练主线 |
 | DeepSpeed | [`53a2ac4`](https://github.com/deepspeedai/DeepSpeed/tree/53a2ac44fb664bea838df3981ba4366b91643070) | ZeRO stages、offload、engine/checkpoint 对照 |
@@ -49,6 +50,23 @@ lesson:
 - [Reproducibility notes](https://pytorch.org/docs/stable/notes/randomness.html)
 
 PyTorch `stable` 文档会随发布更新；先记录运行时 `torch.__version__`，再选择对应版本 URL/API，不要把最新 stable 的实验性参数强套到旧 wheel。
+
+## PyTorch 固定源码地图
+
+| 问题 | 固定入口 |
+| --- | --- |
+| DDP Python 构造/forward | [`torch/nn/parallel/distributed.py`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/nn/parallel/distributed.py#L816-L1892) |
+| DDP C++ Reducer hooks/buckets | [`torch/csrc/distributed/c10d/reducer.cpp`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/csrc/distributed/c10d/reducer.cpp#L87-L249) |
+| DDP ready/finalize | [`mark_variable_ready`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/csrc/distributed/c10d/reducer.cpp#L895-L975) / [`finalize_backward`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/csrc/distributed/c10d/reducer.cpp#L1730-L1824) |
+| DeviceMesh groups/slicing | [`device_mesh.py`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/distributed/device_mesh.py#L153-L330) |
+| DTensor representation/redistribute | [`tensor/_api.py`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/distributed/tensor/_api.py#L356-L770) |
+| FSDP2 public lifecycle | [`fully_shard`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/distributed/fsdp/_fully_shard/_fully_shard.py#L98-L296) |
+| FSDP2 module hooks | [`_fsdp_state.py`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/distributed/fsdp/_fully_shard/_fsdp_state.py#L289-L478) |
+| FSDP2 param group | [`_fsdp_param_group.py`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/distributed/fsdp/_fully_shard/_fsdp_param_group.py#L382-L808) |
+| FSDP2 collectives | [`foreach_all_gather`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/distributed/fsdp/_fully_shard/_fsdp_collectives.py#L325-L378) / [`foreach_reduce`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/distributed/fsdp/_fully_shard/_fsdp_collectives.py#L522-L701) |
+| DCP save/load | [`state_dict_saver.py`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/distributed/checkpoint/state_dict_saver.py#L89-L203) / [`state_dict_loader.py`](https://github.com/pytorch/pytorch/blob/e11b512fef37205cc3b83872eabd92c3cdf05a28/torch/distributed/checkpoint/state_dict_loader.py#L60-L155) |
+
+课程导读：[DDP 源码](../internals/pytorch-ddp-runtime)、[FSDP2 源码](../internals/fsdp2-source)、[可下载实验](../practice/source-labs)。
 
 ## TorchTitan 固定源码地图
 
@@ -101,11 +119,18 @@ PyTorch `stable` 文档会随发布更新；先记录运行时 `torch.__version_
 | --- | --- |
 | engine initialize | [`deepspeed/__init__.py`](https://github.com/deepspeedai/DeepSpeed/blob/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/__init__.py) |
 | runtime engine | [`runtime/engine.py`](https://github.com/deepspeedai/DeepSpeed/blob/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/runtime/engine.py) |
-| ZeRO stages | [`runtime/zero/`](https://github.com/deepspeedai/DeepSpeed/tree/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/runtime/zero) |
+| stage selection | [`_configure_zero_optimizer`](https://github.com/deepspeedai/DeepSpeed/blob/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/runtime/engine.py#L2231-L2401) |
+| ZeRO-1/2 hooks/reduction/step | [`stage_1_and_2.py`](https://github.com/deepspeedai/DeepSpeed/blob/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/runtime/zero/stage_1_and_2.py#L1086-L1184) / [`step`](https://github.com/deepspeedai/DeepSpeed/blob/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/runtime/zero/stage_1_and_2.py#L2194-L2323) |
+| ZeRO-3 optimizer | [`stage3.py`](https://github.com/deepspeedai/DeepSpeed/blob/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/runtime/zero/stage3.py#L148-L450) |
+| ZeRO-3 module hooks | [`parameter_offload.py`](https://github.com/deepspeedai/DeepSpeed/blob/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/runtime/zero/parameter_offload.py#L117-L213) |
+| ZeRO-3 fetch/release | [`partitioned_param_coordinator.py`](https://github.com/deepspeedai/DeepSpeed/blob/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/runtime/zero/partitioned_param_coordinator.py#L298-L509) |
+| ZeRO config/defaults | [`runtime/zero/config.py`](https://github.com/deepspeedai/DeepSpeed/blob/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/runtime/zero/config.py#L81-L330) |
 | checkpoint | [`runtime/checkpoint_engine/`](https://github.com/deepspeedai/DeepSpeed/tree/53a2ac44fb664bea838df3981ba4366b91643070/deepspeed/runtime/checkpoint_engine) |
 | 官方 ZeRO 文档 | [DeepSpeed ZeRO](https://www.deepspeed.ai/tutorials/zero/) |
 
 课程把 DeepSpeed 当 state-sharding/engine 对照，不假设它与 FSDP2 的参数表示、hook、checkpoint 或 offload 细节相同。
+
+完整导读见[DeepSpeed Engine、ZeRO 与参数协调器](../internals/deepspeed-zero-flow)。
 
 ## 经典论文：按问题阅读
 
@@ -136,7 +161,7 @@ flowchart TB
     C --> M2[Megatron or FSDP internal groups]
 ```
 
-配套课程：[veRL 设计原则与 HybridFlow](https://cass998.github.io/losh_has_blog/verl-learning/internals/architecture) 与 [Ray、角色和启动条件](https://cass998.github.io/losh_has_blog/verl-learning/internals/workers)。
+配套课程：[veRL 设计原则与 HybridFlow](/verl/internals/architecture) 与 [Ray、角色和启动条件](/verl/internals/workers)。
 
 ## 术语表
 

@@ -13,6 +13,22 @@ lesson:
 
 主入口是 [`SFTTrainer._prepare_dataset()`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1374)。读它时不要逐行抄注释；追同一条 sample 的字段集合如何变化。
 
+## 固定提交的执行顺序
+
+| 顺序 | 源码 | 条件 | 字段变化 |
+| ---: | --- | --- | --- |
+| 0 | [`1383–1395`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1383) | custom transform / `input_ids` | 拒绝随机 transform；识别已处理数据 |
+| 1 | [`1401–1417`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1401) | 有 formatter 且未处理 | 新增 `text` |
+| 2 | [`1419–1430`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1419) | legacy conversational value | 转 ChatML schema |
+| 3 | [`1432–1450`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1432) | 非 conversational | 给 text/completion 追加 EOS |
+| 4 | [`1452–1539`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1452) | 未处理 | 生成 ids 与可选 masks |
+| 5 | [`1541–1568`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1541) | 没有自带 labels | mask 交集生成 labels，随后删除 mask columns |
+| 6 | [`1570–1597`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1570) | max length 且不 packing | 同步截 ids/labels、过滤全 mask |
+| 7 | [`1599–1614`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1599) | packing | 只保留 ids/labels，pack 后新增 seq_lengths |
+| 8 | [`1621–1624`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1621) | shuffle enabled | 最终 shuffle 并返回 |
+
+注意 source order：formatter 之后 `is_processed` 没重新计算，因为 formatter 只在原本未处理的分支运行；随后整个未处理块继续执行。读局部变量生命周期，比仅看注释更可靠。
+
 ## 总流水线
 
 ```mermaid
@@ -46,6 +62,8 @@ flowchart TD
 - 若 `skip_prepare_dataset=True`，mask columns 不能替代 labels。
 
 固定版本专门拒绝“skip preparation + 只有 completion/assistant mask、没有 labels”的组合，因为 collator 已不负责把这些 mask 转为 labels；否则会静默训练整段。
+
+守卫在 [`_reject_skip_prepare_without_labels` 1637–1655](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1637)。它只在 skip、text dataset、默认 TRL LM collator 三个条件同时满足时检查；自定义 collator 的 labels 契约仍由你负责。
 
 ## Step 1：`formatting_func`
 
@@ -91,6 +109,8 @@ flowchart LR
 ```
 
 若 `full_ids[:len(prompt_ids)] != prompt_ids`，源码 warning。原因可能是 whitespace、tokenizer normalization、模板根据最后消息变化或 generation cue 不一致。此时 boundary 按长度切仍可能错，必须查看实际 tokens。
+
+具体 warning 与“仍按长度构造 mask”的相邻代码在 [`1492–1503`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1492)。它不会改用最长公共前缀，所以 production gate 应把该 warning 升级为失败。
 
 ## Step 5：构建 labels
 
@@ -155,6 +175,35 @@ attention_mask → real=1, pad=0
 | collate | tensors + attention/position | `[B,S]`、dtype/device later |
 
 给每个 golden sample 保存这张表。版本升级时 diff 它，比只比较 final loss 更早发现语义变化。
+
+## 在 trainer 初始化后导出真实 trace
+
+```python
+import json
+
+row = trainer.train_dataset[0]
+ids = row["input_ids"]
+labels = row["labels"]
+assert len(ids) == len(labels) and any(x != -100 for x in labels)
+tokens = trainer.processing_class.convert_ids_to_tokens(ids)
+
+trace = [
+    {
+        "position": i,
+        "token": token,
+        "input_id": token_id,
+        "label": label,
+        "supervised": label != -100,
+    }
+    for i, (token, token_id, label) in enumerate(zip(tokens, ids, labels, strict=True))
+]
+print(json.dumps(trace, ensure_ascii=False, indent=2))
+
+batch = trainer.data_collator([trainer.train_dataset[0], trainer.train_dataset[1]])
+print({key: {"shape": list(value.shape), "dtype": str(value.dtype)} for key, value in batch.items()})
+```
+
+预期：同位置 `input_id==label` 或 `label==-100`；batch 的 ids/labels shape 相同；普通模式还有 attention mask，padding-free 模式还有 position ids。若 processing class 是 VLM processor，需要从其 tokenizer 取 token conversion，并单独记录 pixel/image 字段。
 
 ## 通关标准
 

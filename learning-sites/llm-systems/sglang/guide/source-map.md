@@ -23,6 +23,8 @@ python/sglang/srt/
 ├── managers/
 │   ├── tokenizer_manager.py     # 输入处理、请求异步状态、结果路由
 │   ├── scheduler.py             # 调度循环、缓存和 GPU worker 的主人
+│   ├── scheduler_components/
+│   │   └── request_receiver.py  # entry rank 接收 ZMQ 并向 TP/attention ranks 广播
 │   ├── schedule_batch.py        # Req / ScheduleBatch 数据结构
 │   ├── schedule_policy.py       # LPM、FCFS 等优先级和 PrefillAdder
 │   ├── detokenizer_manager.py   # token ids → 文本增量
@@ -31,6 +33,7 @@ python/sglang/srt/
 ├── mem_cache/
 │   ├── radix_cache.py           # 压缩 radix tree
 │   ├── memory_pool.py           # request slot → token KV index
+│   ├── allocation.py            # extend/decode 的 row 与 KV 联合分配
 │   └── allocator/token.py       # 物理 KV slot 分配
 ├── model_executor/model_runner.py
 └── layers/radix_attention.py    # attention layer wrapper，不是 radix tree
@@ -42,7 +45,7 @@ python/sglang/srt/
 flowchart TD
     A[http_server.py<br/>generate] --> B[TokenizerManager.generate_request]
     B --> C[_send_one_request / ZMQ]
-    C --> D[Scheduler.receive_requests]
+    C --> D[SchedulerRequestReceiver.recv_requests]
     D --> E[process_input_requests]
     E --> F[get_next_batch_to_run]
     F --> G[get_new_batch_prefill / decode update]
@@ -59,6 +62,7 @@ flowchart TD
 
 - [`/generate` route`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/entrypoints/http_server.py#L814)
 - [`TokenizerManager.generate_request()`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/managers/tokenizer_manager.py#L612)
+- [`SchedulerRequestReceiver.recv_requests()`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/managers/scheduler_components/request_receiver.py#L73)
 - [`Scheduler`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/managers/scheduler.py#L301)
 - [`get_next_batch_to_run()`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/managers/scheduler.py#L2618)
 - [`run_batch()`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/managers/scheduler.py#L3220)
@@ -77,6 +81,8 @@ flowchart TD
 | TP ranks 之间 | 参数切片、attention/MLP collective | torch distributed / backend |
 
 第一遍不要展开具体 attention backend。你只需证明 Scheduler 和 ModelRunner 在同一 scheduler rank 进程中，而 tokenizer/detokenizer 在其他进程。
+
+完整消息类型、entry rank 广播条件、异常清理和输出返回路径见[进程与消息逐跳追踪](../internals/message-flow)。
 
 ## 第二遍：只追一个 `rid`
 
@@ -109,12 +115,15 @@ flowchart TD
 | 输入怎样变成 `Req`？ | `tokenizer_manager.py`、`scheduler.py` | `generate_request`、input dispatcher |
 | 谁先被调度？ | `schedule_policy.py` | `SchedulePolicy.calc_priority` |
 | 新 prefill 能否进 batch？ | `schedule_policy.py` | `PrefillAdder.add_one_req` |
+| 长 prompt 怎样跨 step？ | `schedule_policy.py`、`allocation.py`、`scheduler.py` | `add_one_req`、`alloc_for_extend`、`stash_chunked_request` |
 | 前缀怎样命中和分裂？ | `radix_cache.py` | `match_prefix`、`_match_prefix_helper` |
 | KV slot 怎样分配？ | `memory_pool.py`、`allocator/token.py` | pool allocate/free |
 | 本轮张量如何准备？ | `schedule_batch.py`、`forward_batch_info.py` | `ScheduleBatch`、`ForwardBatch` |
 | 模型在哪里 forward？ | `model_runner.py` | `ModelRunner.forward` |
 | overlap 做了什么？ | `scheduler.py` | `event_loop_overlap` |
 | DP 请求怎么路由？ | `data_parallel_controller.py` | `DataParallelController` |
+| PD 怎样交接 KV？ | `disaggregation/prefill.py`、`decode.py` | bootstrap、prealloc、transfer、`prebuilt` batch |
+| RL 换权怎样停机与恢复？ | `scheduler_components/weight_updater.py`、`tokenizer_manager.py` | pause、update、flush、weights check |
 
 ## 推荐的本地搜索
 

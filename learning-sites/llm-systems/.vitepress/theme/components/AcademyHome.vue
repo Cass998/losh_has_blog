@@ -33,6 +33,14 @@ const tracks = [
     question: '模型、状态、序列和专家应该切在哪个维度，通信代价是什么？',
     detail: 'FSDP2 · Megatron · TP/PP/CP/EP · checkpoint',
     link: '/distributed/'
+  },
+  {
+    no: '05',
+    code: 'ALIGN',
+    title: 'veRL',
+    question: 'SFT 权重如何经 vLLM/SGLang 采样、Ray 编排和 PPO/GRPO 更新，形成可验证的强化学习闭环？',
+    detail: 'Single Controller · HybridFlow · Ray · rollout backend · weight sync',
+    link: '/verl/'
   }
 ]
 </script>
@@ -43,7 +51,7 @@ const tracks = [
       <div>
         <p class="academy-kicker"><span>SYSTEMS COURSE</span> 固定源码 · 实验驱动</p>
         <h1 id="academy-title">不要背参数，<br><em>追踪系统。</em></h1>
-        <p class="academy-lead">四条面向 LLM 工程师的中文学习路线。每个概念先用可计算的直觉解释，再落到张量、进程、通信、源码与可复现实验。</p>
+        <p class="academy-lead">五条面向 LLM 工程师的中文学习路线。每个概念先用可计算的直觉解释，再落到张量、进程、通信、源码与可复现实验。</p>
         <a class="academy-button" :href="withBase('/vllm/')">
           从 vLLM 开始
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
@@ -61,10 +69,10 @@ const tracks = [
     </section>
 
     <section class="academy-section" aria-labelledby="tracks-title">
-      <p class="academy-eyebrow">FOUR LEARNING TRACKS</p>
+      <p class="academy-eyebrow">FIVE LEARNING TRACKS</p>
       <div class="academy-heading">
-        <h2 id="tracks-title">四个入口，一套系统视角</h2>
-        <p>推理、训练和分布式不是孤岛：SFT 产出的权重进入 serving，引擎的吞吐又受并行、显存与通信边界约束。</p>
+        <h2 id="tracks-title">五个入口，一条端到端闭环</h2>
+        <p>SFT 产出初始策略，veRL 借助 vLLM/SGLang 收集轨迹并更新权重；训练和 rollout 的规模上限又由并行、显存与通信共同决定。</p>
       </div>
       <ol class="track-grid">
         <li v-for="track in tracks" :key="track.no">
@@ -83,12 +91,13 @@ const tracks = [
     <section class="academy-section academy-loop" aria-labelledby="loop-title">
       <div>
         <p class="academy-eyebrow">ONE END-TO-END LOOP</p>
-        <h2 id="loop-title">把四门课接成一条链</h2>
-        <p>数据经过 SFT 改变权重；FSDP 或 Megatron 让更新跨 GPU 发生；权重进入 vLLM 或 SGLang；线上请求和指标再暴露数据、模型与系统的新问题。</p>
+        <h2 id="loop-title">把五门课接成一条链</h2>
+        <p>数据先完成 SFT 冷启动；veRL 用推理后端生成轨迹、计算奖励并更新策略；FSDP 或 Megatron 承担跨 GPU 训练；新权重进入服务后，线上指标再反馈给下一轮数据与训练。</p>
       </div>
-      <div class="loop-track" role="img" aria-label="数据经过 SFT 和分布式训练生成权重，再由推理引擎提供服务并产生指标反馈">
+      <div class="loop-track" role="img" aria-label="数据经过 SFT 冷启动，由 veRL 使用推理后端采样并强化学习更新，分布式训练负责扩展计算，新权重进入服务后产生指标反馈">
         <div><span>DATA</span><strong>样本与模板</strong></div><i></i>
-        <div><span>TRAIN</span><strong>SFT 更新</strong></div><i></i>
+        <div><span>SFT</span><strong>监督冷启动</strong></div><i></i>
+        <div><span>ALIGN</span><strong>veRL 采样与更新</strong></div><i></i>
         <div><span>SCALE</span><strong>并行通信</strong></div><i></i>
         <div><span>SERVE</span><strong>推理调度</strong></div><i></i>
         <div><span>OBSERVE</span><strong>指标反馈</strong></div>

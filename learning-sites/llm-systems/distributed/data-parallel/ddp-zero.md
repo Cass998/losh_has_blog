@@ -186,4 +186,6 @@ flowchart TD
 
 你应能画 DDP bucket all-reduce 与 ZeRO-3 param lifecycle；推导 stages 逐级分片对象；解释 offload 的新资源账；用相同 global semantics 做两步数值对照。
 
+继续沿固定源码逐函数阅读：[DDP Python→C++ Reducer](../internals/pytorch-ddp-runtime)与[DeepSpeed Engine→ZeRO 参数协调器](../internals/deepspeed-zero-flow)。
+
 下一课看 PyTorch 原生的[FSDP2、DTensor 与 DeviceMesh](./fsdp2)。

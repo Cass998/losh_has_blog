@@ -33,6 +33,8 @@ flowchart LR
 
 当前 TRL 的 dataset preparation 会根据可用 `completion_mask` 与 `assistant_masks` 构建最终 `labels`：只有所有适用 mask 都为 1 的 token 保留 id，否则写 `-100`。源码见 [`_prepare_dataset()`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1374)。
 
+精确分支在 [`1541–1568`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1541)：已有 `labels` 时不重建；`completion_mask` 只有 resolved completion-only 为真才加入；`assistant_masks` 只要存在就加入；`zip(..., strict=False)` 逐位置取所有 mask 的 `all(bits)`。因此 mask 长度错误可能被截到最短长度，生产 pipeline 必须另加“所有序列等长”断言。
+
 ## Completion-only 与 Assistant-only
 
 ### Completion-only
@@ -95,6 +97,8 @@ positions:
 
 固定 TRL 的 BFD packing 会产生 `seq_lengths`，并启用 padding-free collator；[`DataCollatorForLanguageModeling`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L394) 将 sequences flatten，基于长度构建重置的 `position_ids`。源码也明确警告该路径需要已知兼容的 Flash Attention 实现，否则 flattened sequence 可能被错误地当成一条连续文档。
 
+三种策略不是同义词：固定 [`pack_dataset` 843–929](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/data_utils.py#L843) 对 `bfd` 传 `on_seq_length_overflow="truncate"`，对 `bfd_split` 传 `"split"`，`wrapped` 则直接按连续 values 每 `seq_length` 切块。BFD 结果附 `seq_lengths`；wrapped 没有同样的文档边界元数据。
+
 ::: danger Packing 正确性
 吞吐提高不能证明边界正确。做一个“污染测试”：sample B 的标签在改变 sample A 内容后应保持 logits/gradient 语义不变（允许数值噪声）。若显著变化，样本间发生 attention leakage。
 :::
@@ -141,6 +145,40 @@ assistant-only 的监督密度可能很低，但 prompt forward 仍要计算。p
 | 18 | … | `<eot>` | assistant | 1 | 1 | token id |
 
 自动断言：长度一致；有效 labels > 0；pad labels 全为 -100；EOT 按目标受监督；截断比例不超阈值；packed boundaries/positions 正确。
+
+## 用真实 collator 输出验证，而不是画示意图
+
+```python
+from trl.trainer.sft_trainer import DataCollatorForLanguageModeling
+
+examples = [
+    {"input_ids": [11, 12, 13], "labels": [-100, 12, 13]},
+    {"input_ids": [21, 22], "labels": [-100, 22]},
+]
+
+normal = DataCollatorForLanguageModeling(pad_token_id=0)(examples)
+assert normal["input_ids"].tolist() == [[11, 12, 13], [21, 22, 0]]
+assert normal["labels"].tolist() == [[-100, 12, 13], [-100, 22, -100]]
+assert normal["attention_mask"].tolist() == [[1, 1, 1], [1, 1, 0]]
+
+flat = DataCollatorForLanguageModeling(pad_token_id=0, padding_free=True)(examples)
+assert flat["input_ids"].tolist() == [[11, 12, 13, 21, 22]]
+assert flat["position_ids"].tolist() == [[0, 1, 2, 0, 1]]
+assert flat["labels"].tolist() == [[-100, 12, 13, -100, 22]]
+print({k: v.tolist() for k, v in flat.items()})
+```
+
+预期第二段第一个 token `21` 的 label 被强制改成 `-100`。对应实现是 [`torch_call` 462–507](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L462)：471–477 决定 attention/position，481–486 flatten，498–502 将所有 `position_ids==0` 的 labels 清空。
+
+## 配置组合与启动结果
+
+| 配置 | 固定实现结果 | 验证 |
+| --- | --- | --- |
+| `packing=True, strategy=bfd/bfd_split` | [`1140–1143`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1140) 强制 padding-free | `trainer.padding_free is True` |
+| padding-free + custom collator | [`1144–1146`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1144) 直接报错 | 错误配置测试 |
+| padding-free + 非已知 FlashAttention | [`1152–1160`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1152) warning | 必须另跑跨样本污染测试 |
+| padding-free、无 packing、`max_length!=None` | [`1243–1247`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1243) 报错 | 预截断或 `max_length=None` |
+| non-packing 截断后全 mask | [`1590–1597`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1590) filter | 对比 raw/processed row 数 |
 
 ## 通关标准
 

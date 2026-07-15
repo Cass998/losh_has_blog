@@ -13,7 +13,7 @@ lesson:
 
 不要从框架参数名开始。任何分布式训练方案都必须回答三件事：**每个 rank 持有哪些 tensor 分片；forward/backward/step 的哪个时刻需要哪些 collective；样本、参数和优化器状态怎样在 checkpoint 中恢复。**DDP、ZeRO、FSDP、Megatron 只是这些答案的不同组合。
 
-本站固定阅读 Megatron Core 提交 [`82e9dc6`](https://github.com/NVIDIA/Megatron-LM/tree/82e9dc69c9e6f8c27681f2cb6856a188187edf6b)、TorchTitan [`fec3e19`](https://github.com/pytorch/torchtitan/tree/fec3e196a4ceb87bfc87fb4f1a36a538d7e98ee4) 与 DeepSpeed [`53a2ac4`](https://github.com/deepspeedai/DeepSpeed/tree/53a2ac44fb664bea838df3981ba4366b91643070)。API 和默认值以固定提交为准，原理可迁移。
+本站固定阅读 PyTorch [`e11b512`](https://github.com/pytorch/pytorch/tree/e11b512fef37205cc3b83872eabd92c3cdf05a28)、Megatron Core [`82e9dc6`](https://github.com/NVIDIA/Megatron-LM/tree/82e9dc69c9e6f8c27681f2cb6856a188187edf6b)、TorchTitan [`fec3e19`](https://github.com/pytorch/torchtitan/tree/fec3e196a4ceb87bfc87fb4f1a36a538d7e98ee4) 与 DeepSpeed [`53a2ac4`](https://github.com/deepspeedai/DeepSpeed/tree/53a2ac44fb664bea838df3981ba4366b91643070)。API、默认值和行号以固定提交为准，原理可迁移。
 
 ## 先回答六个问题
 
@@ -99,7 +99,23 @@ flowchart LR
 | 02 策略 | DDP/ZeRO/FSDP 与 Megatron 多维并行 | 每种维度的 tensor layout 图 |
 | 03 源码生产 | TorchTitan/Megatron trace、checkpoint、hang/OOM | two-step trace、scaling report、runbook |
 
-完整安排见[学习地图与版本边界](./guide/learning-path)，框架选择见[决策地图](./guide/decision-map)。
+快速安排见[学习地图与版本边界](./guide/learning-path)，完整逐日源码路线见[42 天源码学习计划](./guide/source-study-plan)，框架选择见[决策地图](./guide/decision-map)。
+
+## 四条固定源码主线
+
+| 主线 | 从哪里进 | 必须追到哪里 | 实践门禁 |
+| --- | --- | --- | --- |
+| PyTorch DDP | `DistributedDataParallel.__init__/forward` | C++ `Reducer` grad hook、bucket future、`finalize_backward` | 2-rank global-batch等价、`no_sync` |
+| PyTorch FSDP2 | `fully_shard` | `FSDPState/FSDPParamGroup`、AG/RS streams与root final callback | block-wise lifecycle、DCP round-trip |
+| TorchTitan / Megatron | CLI/pretrain入口 | mesh/rank groups、local model、schedule、token loss与optimizer | single→FSDP/TP/PP/CP/EP单变量 |
+| DeepSpeed | `deepspeed.initialize` | Engine boundary、stage 1/2 hooks、stage 3 coordinator fetch/release | stage 0/2/3、GAS、checkpoint |
+
+- [PyTorch DDP 源码解剖](./internals/pytorch-ddp-runtime)
+- [FSDP2 源码解剖](./internals/fsdp2-source)
+- [TorchTitan 源码主线](./internals/torchtitan)
+- [Megatron 源码主线](./internals/megatron-flow)
+- [DeepSpeed ZeRO 源码主线](./internals/deepspeed-zero-flow)
+- [可下载脚本与源码实践](./practice/source-labs)
 
 ## 第一遍只追八类对象
 

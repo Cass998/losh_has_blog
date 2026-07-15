@@ -31,6 +31,8 @@ target labels:    [我,   喜欢, 猫,   EOS]
 
 最后一个 input position 没有序列内的下一个 label；第一个 label `BOS` 也没有前一个 logits 与之配对。不要手工把 labels 再 shift 一次，除非自定义模型明确要求；多数 `AutoModelForCausalLM(..., labels=...)` 会处理 shift。
 
+这不是约定俗成的猜测。固定 Transformers 的 [`ForCausalLMLoss`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/loss/loss_utils.py#L49) 在 61–70 行先把 labels 右侧 pad `-100`，再取 `labels[..., 1:]` 并与 flatten logits 做 cross entropy；若调用方已提供 `shift_labels` 才跳过内部 shift。
+
 ```mermaid
 sequenceDiagram
     participant D as Dataset / Collator
@@ -123,7 +125,9 @@ packing、长度分布与 assistant mask 会让相同 `B_global` 对应完全不
 
 ## 当前 TRL 的 loss 路径
 
-固定版本的 SFT 数学目标仍是 token NLL，但默认 `loss_type="chunked_nll"` 会避开为所有被忽略位置同时保留完整 vocab logits，以降低峰值 activation；`loss_type="nll"` 走常规路径。实现选择不应改变有效 token 上的目标，但会改变显存、兼容性和 profile。
+固定版本的 SFT 数学目标仍是 token NLL。`SFTConfig.loss_type` 字段初始是 `None`，但 [`__post_init__` 334–336](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_config.py#L334) 会解析为 `chunked_nll`；只有启用 Liger 时默认解析为 `nll`。所以应打印 resolved config，而不是把 dataclass 字段的 `None` 误解成“模型自行决定”。
+
+[`_chunked_cross_entropy_loss` 117–234](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L117) 在 182–186 行完成 hidden/label shift 与有效 token 计数，在 200–226 行把有效位置排到前面并分块做 lm_head/CE，在 228–233 行按本地有效 token 或 `num_items_in_batch` 归一。它避免为所有被忽略位置同时保留完整 vocab logits，降低峰值 activation；`nll` 走模型常规路径。实现选择不应改变有效 token 上的数学目标，但会改变显存、兼容性和 profile。
 
 自定义 loss 前先读 [`SFTTrainer`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L790) 如何向 Transformers Trainer 传 `compute_loss_func`，再读 [`Trainer.compute_loss()`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1953)。不要只替换一个函数名，却漏掉 gradient accumulation 的样本数归一化。
 
@@ -139,6 +143,30 @@ mask   = [0, 0, 0, 0, 0, 0, 1, 1, 0]
 注意 causal shift：`mask` 表示 label 位置。有效预测是前一位置 logits 预测 `5` 与 `EOT`，共两个 target；不是让 token `5` 的 logits 预测自己。
 
 实现一个断言：每条训练样本至少有一个有效 target，且 assistant 最后一个 end token 是有效 target。若任一失败，在训练前拒绝数据。
+
+### 可运行的 shift 对照
+
+```python
+import torch
+import torch.nn.functional as F
+
+# 三个词表项；位置 0/1/2 的 logits 分别偏好 token 1/2/0。
+logits = torch.tensor([[[0., 4., 0.], [0., 0., 4.], [4., 0., 0.]]])
+labels = torch.tensor([[-100, 1, 2]])
+
+# causal shift 后只有 logits[0]→label[1]、logits[1]→label[2] 有效；最后 logits 无目标。
+loss = F.cross_entropy(
+    logits[:, :-1].reshape(-1, 3),
+    labels[:, 1:].reshape(-1),
+    ignore_index=-100,
+)
+expected = -torch.log_softmax(torch.tensor([0., 4., 0.]), 0)[1]
+assert torch.allclose(loss, expected)
+assert (labels[:, 1:] != -100).sum().item() == 2
+print(f"loss={loss.item():.6f}, targets=2")
+```
+
+预期 loss 约为 `0.035976`。把 labels 手工左移后再传给 causal LM 会发生二次 shift；本例应作为升级 loss/model 代码后的最小回归。
 
 ## 通关标准
 

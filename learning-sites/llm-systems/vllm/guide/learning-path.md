@@ -13,6 +13,8 @@ lesson:
 
 学习 vLLM 的目标不是记住所有 backend，而是能从负载出发，预测一次 step 的数据、缓存、进程和时间花在哪里。本路线按每周 5–7 小时设计；有 GPU 就做真实服务，没有 GPU 也能完成公式、源码和结果分析。
 
+本页适合先了解四周全貌。要按天执行并保留可验收产物，请直接使用[30 日六阶段源码学习计划](./study-plan)；两条路线内容一致，后者把每天的源码入口、命令和通过条件展开了。
+
 ## 当前版本边界
 
 课程固定到 2026-07-15 的提交：
@@ -100,6 +102,8 @@ KV bytes/token = 2 × layers × kv_heads × head_dim × dtype_bytes
 4. [Worker、Runner 与模型执行](../internals/model-execution)
 5. [TP、PP、DP 与多节点](../internals/distributed)
 
+随后用[固定提交完整调用链](../internals/full-code-path)把分散章节合成一条 HTTP → SSE 竖切面，再用[模型 forward、Paged KV 与采样](../internals/model-forward-sampling)补齐 GPU 内部的数据变形。最后完成[源码跟踪实验](../practice/source-lab)和[分布式实战](../practice/distributed-lab)，把静态阅读变成运行证据。
+
 每读一层，在笔记中填同一张表：
 
 | 时刻 | 进程 | 对象 | 关键字段变化 | 下一个消费者 |
@@ -156,3 +160,5 @@ SLO（TTFT/ITL/E2E）：
 - 能在固定提交中指出请求入队、调度、分配缓存、执行、更新和流式输出的位置。
 
 达到这些标准后，再追新版本变更会快很多，因为你比较的是模型边界，而不是重新背目录。
+
+若你需要每天照表推进，下一步进入[30 日六阶段源码学习计划](./study-plan)；若已准备读代码，则打开[源码地图](./source-map)。

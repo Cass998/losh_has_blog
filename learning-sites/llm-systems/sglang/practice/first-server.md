@@ -27,7 +27,7 @@ python3 -m pip --version
 
 ### 只想试用当前发行包
 
-在独立虚拟环境中按[官方安装文档](https://docs.sglang.io/get_started/install.html)安装，并保存最终版本：
+在独立虚拟环境中按固定提交的[官方安装文档](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/docs_new/docs/get-started/install.mdx)安装，并保存最终版本：
 
 ```bash
 python3 -m venv .venv-sglang
@@ -68,7 +68,7 @@ PY
 以下模型小，适合验证链路；并不保证适配每种 GPU/后端：
 
 ```bash
-MODEL=qwen/qwen2.5-0.5b-instruct
+MODEL=Qwen/Qwen2.5-0.5B-Instruct
 
 python3 -m sglang.launch_server \
   --model-path "$MODEL" \
@@ -120,7 +120,7 @@ native route 最终调用 [`TokenizerManager.generate_request()`](https://github
 curl -sS http://127.0.0.1:30000/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{
-    "model": "qwen/qwen2.5-0.5b-instruct",
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
     "messages": [
       {"role": "user", "content": "只回答一个数字：1+1=?"}
     ],
@@ -213,4 +213,4 @@ server.log             从启动到请求结束的日志
 
 你应能证明：主进程收到请求、Scheduler rank 完成至少一次 forward、DetokenizerManager 返回增量文本；并能解释为什么 `/health` 200 不能单独证明 GPU 生成链路健康。
 
-下一步用[基准、指标与调参](./benchmark)从“能跑”进入“能测”。
+下一步用[基准、指标与调参](./benchmark)从“能跑”进入“能测”，再按[实验工作簿](./lab-workbook)补齐取消、结构化输出、TP/DP/多节点、PD/HiCache 和 RL 换权验收。

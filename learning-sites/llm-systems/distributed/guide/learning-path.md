@@ -15,15 +15,19 @@ lesson:
 
 ## 两条路线
 
+这页提供快速导航；若目标是用户要求的“下载官方源码、逐函数反推原理与流程”，直接执行[42 天源码学习计划](./source-study-plan)。它为每天指定固定源码范围、推导、实验、产物与停止门禁。
+
 ### 路线 A：从 DDP 到 FSDP2
 
 1. [进程、拓扑与集合通信](../fundamentals/collectives)
 2. [训练显存账本](../fundamentals/memory)
 3. [DDP 与 DeepSpeed ZeRO](../data-parallel/ddp-zero)
 4. [FSDP2、DTensor 与 DeviceMesh](../data-parallel/fsdp2)
-5. [FSDP2 与 Megatron 实验](../practice/first-runs)
-6. [TorchTitan 源码主线](../internals/torchtitan)
-7. [Checkpoint](../practice/checkpointing)与[排障](../practice/debugging)
+5. [DDP C++ Reducer 源码](../internals/pytorch-ddp-runtime)与[FSDP2 状态机源码](../internals/fsdp2-source)
+6. [FSDP2 与 Megatron 实验](../practice/first-runs)
+7. [TorchTitan 源码主线](../internals/torchtitan)
+8. [DeepSpeed ZeRO 源码主线](../internals/deepspeed-zero-flow)
+9. [Checkpoint](../practice/checkpointing)、[源码实践](../practice/source-labs)与[排障](../practice/debugging)
 
 适合 Transformers/PyTorch 原生模型、先做数据并行/状态分片的读者。
 
@@ -36,7 +40,7 @@ lesson:
 5. [CP/EP](../model-parallel/context-expert)
 6. [多维组合](../model-parallel/multidimensional)
 7. [Megatron 源码主线](../internals/megatron-flow)
-8. Checkpoint 与排障。
+8. [源码驱动实践](../practice/source-labs)、Checkpoint 与排障。
 
 适合单个模型/序列已不能靠普通 state sharding 高效扩展，需要模型结构感知并行的读者。
 
@@ -44,6 +48,7 @@ lesson:
 
 | 项目 | 提交 | 学习主线 |
 | --- | --- | --- |
+| PyTorch | [`e11b512`](https://github.com/pytorch/pytorch/tree/e11b512fef37205cc3b83872eabd92c3cdf05a28) | DDP C++ Reducer、DeviceMesh/DTensor、FSDP2、DCP |
 | Megatron-LM/Core | [`82e9dc6`](https://github.com/NVIDIA/Megatron-LM/tree/82e9dc69c9e6f8c27681f2cb6856a188187edf6b) | TP/PP/CP/EP、distributed optimizer、训练 loop/checkpoint |
 | TorchTitan | [`fec3e19`](https://github.com/pytorch/torchtitan/tree/fec3e196a4ceb87bfc87fb4f1a36a538d7e98ee4) | PyTorch FSDP2/DTensor/DeviceMesh 与多维并行参考 |
 | DeepSpeed | [`53a2ac4`](https://github.com/deepspeedai/DeepSpeed/tree/53a2ac44fb664bea838df3981ba4366b91643070) | ZeRO stages/offload/config/checkpoint |

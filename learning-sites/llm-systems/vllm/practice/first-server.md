@@ -43,9 +43,12 @@ uv pip install vllm --torch-backend=auto
 下面的小模型便于教学；可以把 `MODEL` 换成你已有权限且显存能容纳的 instruct 模型。
 
 ```bash
-export MODEL=Qwen/Qwen2.5-0.5B-Instruct
+export MODEL=Qwen/Qwen3-0.6B
+export MODEL_REVISION=c1899de289a04d12100db370d81485cdf75e47ca
 
 vllm serve "$MODEL" \
+  --revision "$MODEL_REVISION" \
+  --tokenizer-revision "$MODEL_REVISION" \
   --host 127.0.0.1 \
   --port 8000 \
   --max-model-len 4096 \
@@ -58,6 +61,7 @@ vllm serve "$MODEL" \
 | 参数 | 本实验为什么显式写出 |
 | --- | --- |
 | `--host 127.0.0.1` | 默认不把无鉴权接口暴露到公网 |
+| `--revision` / `--tokenizer-revision` | 模型权重、配置与 tokenizer 固定到同一个不可变提交，避免重跑时悄悄读取更新后的 `main` |
 | `--max-model-len 4096` | 控制实验所需 KV 容量，避免模型声明的超长上下文吃掉余量 |
 | `--gpu-memory-utilization 0.80` | 给同机桌面、监控或其他进程留空间；它不是“模型占 80%” |
 | `--generation-config vllm` | 不隐式采用模型仓库里的采样默认值，便于对照实验 |

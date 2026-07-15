@@ -18,21 +18,34 @@ lesson:
 推荐 Python 虚拟环境与一张可用 GPU；135M 级模型也可用 CPU 验证逻辑，但会慢。安装与你选定版本兼容的 PyTorch 后：
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install trl datasets
+# 先按 https://pytorch.org/get-started/locally/ 安装与你的 CUDA/CPU 匹配的 torch。
+python -m pip install torch
+
+# 课程阅读快照；直接 URL 会被 pip freeze 记录为 commit。
+python -m pip install \
+  "transformers @ git+https://github.com/huggingface/transformers.git@e52d0fd6fa9eb874f7c2da048198276b04c919b9" \
+  "trl @ git+https://github.com/huggingface/trl.git@f3adc504b93d634666c5628e7bdaa99ec8861028" \
+  "peft @ git+https://github.com/huggingface/peft.git@cea8213158c8b682acc0839405c2062d57fdf867" \
+  "accelerate @ git+https://github.com/huggingface/accelerate.git@665444ceb62211f2b410d0d0fdb4bc013c5effdf" \
+  "datasets @ git+https://github.com/huggingface/datasets.git@41adfd0f9ee9ba3a6b4f719d5b551c5b19ae45e2"
 
 python - <<'PY'
-import torch, transformers, trl
+import accelerate, datasets, peft, torch, transformers, trl
 print("torch", torch.__version__)
 print("transformers", transformers.__version__)
 print("trl", trl.__version__)
+print("peft", peft.__version__)
+print("accelerate", accelerate.__version__)
+print("datasets", datasets.__version__)
 print("cuda", torch.cuda.is_available())
 PY
+python -m pip freeze > runs-environment.txt
 ```
 
-课程解释绑定固定提交；你可安装对应 release 或源码 commit。网络受限环境应提前把 model/tokenizer 按固定 revision 放到本地，并启用离线模式。不要在生产机直接运行未审查的 `trust_remote_code=True`。
+这些仓库快照不保证适配任意 PyTorch/CUDA；安装或 import 失败时保留完整 solver 输出，并按各仓库当时的 Python/PyTorch 要求建环境。网络受限环境应提前把 model/tokenizer 按固定 revision 放到本地并启用离线模式。不要在生产机直接运行未审查的 `trust_remote_code=True`。
 
 ## 最小训练脚本
 
@@ -41,13 +54,15 @@ PY
 ```python
 import json
 import os
+import re
 
 import torch
 from datasets import Dataset
-from transformers import AutoTokenizer, set_seed
+from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 from trl import SFTConfig, SFTTrainer
 
 MODEL = os.environ.get("MODEL", "HuggingFaceTB/SmolLM2-135M")
+REVISION = os.environ.get("REVISION", "93efa2f097d58c2a74874c7e644dbc9b0cee75a2")
 OUT = "runs/tiny-sft"
 set_seed(42)
 
@@ -66,9 +81,12 @@ train_ds = Dataset.from_list(rows)
 
 bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
 fp16 = torch.cuda.is_available() and not bf16
+dtype = torch.bfloat16 if bf16 else torch.float16 if fp16 else torch.float32
+tokenizer = AutoTokenizer.from_pretrained(MODEL, revision=REVISION)
 
 args = SFTConfig(
     output_dir=OUT,
+    model_init_kwargs={"revision": REVISION, "dtype": dtype},
     max_steps=120,
     per_device_train_batch_size=4,
     gradient_accumulation_steps=1,
@@ -90,6 +108,7 @@ trainer = SFTTrainer(
     model=MODEL,
     args=args,
     train_dataset=train_ds,
+    processing_class=tokenizer,
 )
 
 # 在第一步前审计 Trainer 实际构建的数据，不猜测 mask。
@@ -109,16 +128,74 @@ assert all(
     for x in audit[: next(i for i, x in enumerate(audit) if x["label"] != -100)]
 )
 
+# 选一个小的可训练参数完整保存，避免只看 loss 猜测 optimizer 是否生效。
+probe_name, probe = next(
+    (name, p) for name, p in trainer.model.named_parameters()
+    if p.requires_grad and 0 < p.numel() <= 16384
+)
+before = probe.detach().float().cpu().clone()
 result = trainer.train()
 print(result.metrics)
+print("global_step", trainer.state.global_step)
+assert trainer.state.global_step == args.max_steps
+after = dict(trainer.model.named_parameters())[probe_name].detach().float().cpu()
+delta = (after - before).norm().item()
+print("parameter_probe", probe_name, "delta_norm", delta)
+assert delta > 0, "optimizer completed but probe parameter did not change"
 trainer.save_model(OUT)
 tokenizer.save_pretrained(OUT)
+
+# 验收必须从磁盘 checkpoint 重载，不能复用 trainer.model 掩盖漏存文件。
+del trainer
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
+reload_tokenizer = AutoTokenizer.from_pretrained(OUT)
+reload_model = AutoModelForCausalLM.from_pretrained(OUT).eval()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+reload_model.to(device)
+
+
+def normalize(text):
+    return re.sub(r"\s+", "", text).strip("。.!！").casefold()
+
+
+passed = 0
+for q, expected in pairs:
+    prompt = f"问题：{q}\n答案："
+    inputs = reload_tokenizer(prompt, return_tensors="pt").to(device)
+    with torch.no_grad():
+        ids = reload_model.generate(
+            **inputs,
+            max_new_tokens=16,
+            do_sample=False,
+            eos_token_id=reload_tokenizer.eos_token_id,
+            pad_token_id=reload_tokenizer.pad_token_id
+            or reload_tokenizer.eos_token_id,
+        )
+    completion = reload_tokenizer.decode(
+        ids[0, inputs.input_ids.shape[1]:], skip_special_tokens=True
+    )
+    exact = normalize(completion) == normalize(expected)
+    passed += int(exact)
+    print(json.dumps({
+        "greedy_question": q,
+        "prediction": completion,
+        "expected": expected,
+        "exact": exact,
+    }, ensure_ascii=False))
+
+print("greedy_passed", passed, "of", len(pairs))
+assert passed >= 3, "tiny-overfit gate failed: fewer than 3/4 mappings reproduced"
+print("checkpoint_reload", type(reload_model).__name__, type(reload_tokenizer).__name__)
 ```
 
 命令：
 
 ```bash
+mkdir -p runs
+set -o pipefail
 python train_tiny.py 2>&1 | tee runs/tiny-sft.log
+test "${PIPESTATUS[0]}" -eq 0
 ```
 
 代码中的高学习率和重复数据只用于过拟合测试，不是生产配方。
@@ -158,30 +235,39 @@ NaN/Inf 先查 dtype、数据和 LR。小数据重复训练应明显下降；完
 
 ### 3. 参数确实更新
 
-严谨做法是在训练前保存一个代表参数副本，训练后比较 norm。全参训练应有大量参数 `requires_grad=True`；LoRA 则只允许 adapter/显式 modules 更新。
+脚本已保存一个小的 trainable parameter 并断言 `delta_norm>0`。全参训练应有大量参数 `requires_grad=True`；LoRA 则只允许 adapter/显式 modules 更新。若模型所有可训练参数都大于 16384 elements，改为按模型结构选择一个 norm/bias 参数，不能删掉这项验证。
 
 ### 4. Greedy 生成
 
-```python
-model = trainer.model.eval()
-device = next(model.parameters()).device
+完整脚本在保存后删除 `trainer`，从 `runs/tiny-sft` 重载模型和 tokenizer，再对四条训练映射做 greedy 生成。至少 3/4 normalized exact match 才退出 0；因此“只能由内存中的旧模型生成”不会假通过。这四条都是训练数据，目的是检查连通性，不是泛化指标。
 
-for q, expected in pairs:
-    prompt = f"问题：{q}\n答案："
-    inputs = tokenizer(prompt, return_tensors="pt").to(device)
-    with torch.no_grad():
-        ids = model.generate(
-            **inputs,
-            max_new_tokens=16,
-            do_sample=False,
-            eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
-        )
-    completion = tokenizer.decode(ids[0, inputs.input_ids.shape[1]:], skip_special_tokens=True)
-    print(q, repr(completion), "expected", repr(expected))
+## 预期输出与验收
+
+不同硬件与依赖会让速度、绝对 loss 不同，不应硬编码单一数值。以下不变量必须全部出现：
+
+```text
+token audit: prompt labels 全 -100；completion/EOS 至少一个有效 label
+train_runtime/train_loss: finite
+parameter_probe ... delta_norm <正数>
+global_step: 120（脚本会断言，未达到即失败）
+greedy_passed: 至少 3 of 4，且每条 JSON 输出来自重载 checkpoint
+checkpoint: config + model weights + tokenizer files 可重新加载
 ```
 
-这四条都是训练数据，目的是检查连通性，不是泛化指标。
+主脚本已经完成严格重载。还可在另一个 Python 进程做只读 smoke，验证目录不依赖训练进程状态：
+
+```bash
+python - <<'PY'
+from transformers import AutoModelForCausalLM, AutoTokenizer
+m = AutoModelForCausalLM.from_pretrained("runs/tiny-sft")
+t = AutoTokenizer.from_pretrained("runs/tiny-sft")
+print(type(m).__name__, type(t).__name__, m.config.name_or_path)
+PY
+```
+
+预期退出码 0。若 loss 下降但参数 delta 断言失败，先查 optimizer param groups/overflow；若参数更新但不能生成映射，查训练步数、labels 和 generation protocol；若只能在原进程生成，查 checkpoint 实际保存内容。
+
+该调用链对应固定源码：trainer 数据准备 [`1374–1624`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1374)，collator [`462–507`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L462)，训练 step [`1880–1951`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1880)，optimizer update [`1766–1787`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1766)。
 
 ## 再加对话格式
 

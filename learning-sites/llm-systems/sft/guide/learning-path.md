@@ -117,19 +117,43 @@ runs/2026-07-16-sft-a/
 
 这是范围控制，不是说这些主题不重要。它们应由已观察到的瓶颈触发。
 
-## 预计学习节奏
+## 14 天可执行学习计划
 
-| 周期 | 目标 | 产出 |
-| --- | --- | --- |
-| 第 1 天 | objective、模板、mask | token audit notebook/script |
-| 第 2 天 | 最小训练、过拟合 | 可复现 tiny run |
-| 第 3 天 | LoRA/QLoRA 与评估 | 三组受控对照 |
-| 第 4–5 天 | 源码 trace | dataset → loss 调用链 |
-| 第 6 天 | 显存/吞吐 | memory ledger 与 profile |
-| 第 7 天 | 多卡与故障演练 | scaling report 与 runbook |
+每天不是“看完页面”，而是交付一个能复核的文件。建议目录沿用前文的 `manifests/audits/configs/runs/reports`。
+
+| 天 | 阅读与源码 | 实践 | 当日必须提交 | 通过条件 |
+| ---: | --- | --- | --- | --- |
+| 1 | objective；`ForCausalLMLoss` | 手算 6-token CE，再用 PyTorch 对照 | `audits/manual_ce.md` | shift、ignore index、分母一致 |
+| 2 | data；TRL dataset formats | schema、role、空值、重复、group split | `reports/data_profile.json` | 无跨 split group；坏行有处置 |
+| 3 | chat template；`apply_chat_template` | 五类 golden conversations 渲染/tokenize | `audits/template_golden.json` | special token、generation cue、前缀断言通过 |
+| 4 | masking/packing；`build_labels`/collator | 逐 token 打印 masks/labels，构造截断反例 | `audits/token_labels.jsonl` | 每条有效 target>0；EOS/EOT 符合设计 |
+| 5 | first-run | 单卡 `max_steps=1`，保存 batch/loss/grad/delta | `runs/one-step/` | finite loss；目标参数更新 |
+| 6 | first-run | 32–128 条数据 tiny-overfit | `runs/tiny-overfit/` | loss 明显下降，greedy 复现训练映射 |
+| 7 | evaluation | 固定 generation protocol，跑 held-out slices | `reports/baseline_eval.md` | 不以 train loss 代替生成指标 |
+| 8 | architecture；SFTTrainer init | 逐分支读 901–1372，运行四个错误配置 | `audits/init-branches.md` | 每个启动条件定位到源码行 |
+| 9 | data-pipeline | 断点追 raw→ids→labels→batch | `audits/sample-trace.md` | 字段、shape、mask 变化完整 |
+| 10 | source walkthrough/loss-update | 追 `train()` 到 step，两 micro-batch 累积 | `audits/update-trace.md` | 解释 no-sync、backward、clip、step |
+| 11 | LoRA | 全参 vs LoRA；列 trainable names/state dict | `reports/full-vs-lora.md` | 参数/显存/checkpoint 契约明确 |
+| 12 | QLoRA | 4-bit base + LoRA；记录三种 dtype | `reports/qlora.md` | storage/compute/adapter dtype 没混淆 |
+| 13 | scaling | 单卡 vs 2-rank DDP；需要时再 FSDP/ZeRO | `reports/scaling.md` | supervised tokens/update 保持一致 |
+| 14 | debugging | 主动制造 OOM、全 mask、坏模板、resume | `reports/failure-drill.md` | 每个故障有证据、修复、回归测试 |
+
+统一命令骨架：
+
+```bash
+mkdir -p manifests audits configs runs reports
+python -m pip freeze > manifests/pip-freeze.txt
+git -C /path/to/trl rev-parse HEAD > manifests/trl.commit
+git -C /path/to/transformers rev-parse HEAD > manifests/transformers.commit
+
+python experiment.py --config configs/day-N.yaml 2>&1 | tee runs/day-N.log
+test "${PIPESTATUS[0]}" -eq 0
+```
+
+只有 7 天时，可把第 1–4 天两两合并、第 8–10 天合并；不要删除数据/labels 门禁或 tiny-overfit。算力不足就换更小模型和更短序列，原理与源码验证仍须保留。
 
 ## 通关标准
 
-毕业不是“训练命令退出码为 0”。你要能从一条原始样本手工推导渲染文本、token、labels 和第一个 loss target；能计算 global batch/tokens per update；能说明 checkpoint 是完整模型还是 adapter；能从 loss 曲线和生成样例提出可证伪的故障假设。
+毕业不是“训练命令退出码为 0”。你要能从一条原始样本手工推导渲染文本、token、labels 和第一个 loss target；能计算 global batch/tokens per update；能说明 checkpoint 是完整模型还是 adapter；能从 loss 曲线和生成样例提出可证伪的故障假设。源码阶段以[从构造器到一次参数更新](../internals/source-walkthrough)为主实验，没有完成其中六份证据，不能把“读过代码”记为完成。
 
 现在进入[Teacher Forcing 与交叉熵](../fundamentals/objective)。

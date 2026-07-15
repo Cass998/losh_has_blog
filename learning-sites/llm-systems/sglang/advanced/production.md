@@ -92,7 +92,7 @@ curl -fsS http://127.0.0.1:30000/metrics | rg '^sglang:'
 
 一个 TTFT p99 查询形态是：
 
-```promql
+```text
 histogram_quantile(
   0.99,
   sum by (le, model) (
@@ -210,4 +210,4 @@ Canary 必须包含代表性的长 prompt、streaming 和已启用 feature。只
 
 你应能从 workload contract 建立 KV/服务速率账，用逐 rank、逐阶段指标区分 queue、prefill、decode、cache restore 和网络问题；能解释为什么高 GPU 利用、高 cache hit 或 HTTP 200 都不单独等于健康。
 
-课程最后一页整理[固定源码、官方文档与术语](../appendix/references)。
+把本页诊断动作按[实验工作簿](../practice/lab-workbook)预演一遍，再到课程最后一页查[固定源码、官方文档与术语](../appendix/references)。

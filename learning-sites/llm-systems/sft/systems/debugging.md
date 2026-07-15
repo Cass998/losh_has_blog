@@ -42,6 +42,31 @@ custom template/collator → standard prompt-completion
 
 每次只移除一个维度并记录是否复现。最小化不是最终修复，而是定位所有权。
 
+## 先查源码已有的 guard
+
+| 症状/错误组合 | 固定源码 | 框架行为 | 你的下一步 |
+| --- | --- | --- | --- |
+| 无 train dataset | [`936–947`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L936) | init 直接失败；Iterable 关闭 dispatch | 修 dataset/steps，不调 optimizer |
+| VLM + packing/padding-free/assistant-only | [`1015–1035`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1015) | init 直接失败 | 用 VLM collator 支持的路径 |
+| PEFT wrapper + 新 peft config | [`1050–1054`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1050) | 拒绝二次注入 | 合并/卸载或传 base |
+| assistant mask 为空 | [`1521–1527`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1521) | tokenize 时 RuntimeError | 修 generation markers/template |
+| skip preparation 但只有 masks | [`1637–1655`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1637) | 防止静默 full-sequence loss | 预建 labels 或不要 skip |
+| 全 mask chunked microbatch | [`190–198`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L190) | 返回与 graph/params 相连的 0 loss，防 DDP hang | 仍要查为何无 target，不能视为正常数据 |
+| 非有限 loss 仅日志被过滤 | [`1749–1761`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1749) | logging 可替换显示值，但训练根因仍在 | 看第一处 forward/grad 非有限值 |
+
+源码 guard 覆盖不了业务事实性、split 泄漏、attention 污染或服务二次模板；没有 traceback 不等于正确。
+
+### 四个必须主动运行的故障注入
+
+```text
+F1: completion-only + keep-start + 超长 prompt → 预期样本被全-mask filter
+F2: assistant-only + 无 generation marker 模板 → 预期 init/tokenize 失败
+F3: skip_prepare_dataset + completion_mask、无 labels → 预期 guard 失败
+F4: 两 rank 中 rank 1 在首 batch 主动 raise → 预期收集到一 rank 原始异常与另一 rank collective 退出信息
+```
+
+每个实验固定 `max_steps=1`，保存命令、所有 rank log、预期失败阶段与退出码。若升级后错误不再出现，先检查语义是否被框架正确替代，不能把“现在不报错”直接当兼容。
+
 ## OOM：先确定发生在哪个 phase
 
 | Phase | 常见主因 | 证据/实验 |

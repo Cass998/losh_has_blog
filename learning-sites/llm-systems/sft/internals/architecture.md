@@ -44,6 +44,8 @@ flowchart TD
 
 `_BaseTrainer` 在当前提交主要提供 TRL trainers 共用的 telemetry/model-card 辅助；真正训练循环仍继承 Transformers。调试 `save_strategy` 不应从 `SFTTrainer._prepare_dataset()` 找，调试 assistant mask 也不应先钻 `Trainer._inner_training_loop()`。
 
+可直接由类定义验证：[`SFTTrainer(_BaseTrainer)`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L790)、[`_BaseTrainer(Trainer)`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/base_trainer.py#L65)。不要仅凭 Mermaid 相信继承关系。
+
 ## 构造阶段发生什么
 
 ```mermaid
@@ -79,6 +81,21 @@ sequenceDiagram
 
 检查 dataset sample 决定 language-modeling/prompt-completion、vision、实际 completion-only；设置 assistant template、packing/padding-free，调用 `_prepare_dataset()` 产出 `input_ids/labels[/seq_lengths]`。
 
+## 构造器逐段证据表
+
+| 段落 | 固定源码 | 进入条件 | 产生的状态 |
+| --- | --- | --- | --- |
+| args 归一 | [`901–934`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L901) | args 缺省/普通 TrainingArguments | 一定得到 `SFTConfig` |
+| train dataset | [`936–947`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L936) | 总是 | 必须非空；Iterable 关闭 dispatch |
+| model load | [`949–976`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L949) | model 是字符串 | 合并 quant config；distributed 清除 auto device map |
+| processor/template | [`978–1013`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L978) | processor 缺省/模板路径存在 | tokenizer/VLM 分类、EOS、可选新增 token |
+| PEFT | [`1038–1137`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1038) | 传 peft_config 或 model 已为 PEFT | adapter wrapper、GC/dtype/ZeRO-3 修正 |
+| collator/目标 | [`1139–1247`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1139) | 总是 | resolved padding/completion/assistant flags 与 collator |
+| dataset prepare | [`1249–1283`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1249) | 非 skip、非 vision on-the-fly | processed train/eval dataset |
+| loss 与父类 | [`1285–1369`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1285) | 按 loss/Liger/MoE | patched model 或 compute loss；Trainer/Accelerator 初始化 |
+
+调试初始化失败时按表从上到下；后段对象根本还不存在时，不要在后段打断点。
+
 ## 训练阶段调用链
 
 ```mermaid
@@ -99,6 +116,8 @@ flowchart LR
 ```
 
 当前 [`SFTTrainer.training_step()`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1839) 只额外包 activation offload context，主体委托给父类。通用 [`Trainer.training_step()`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1880) 准备 inputs、调用 loss、处理 accumulation normalization，再交 `accelerator.backward()`。
+
+optimizer 并不是在 `training_step` 内 step。固定父类在 [`_run_epoch` 1702–1747](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1702) 将一个 update 拆成多个 micro-batches并决定 no-sync，在 [`1766–1787`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L1766) clip、`optimizer.step()`、scheduler、zero grad 与 `global_step += 1`。
 
 ## 为什么配置看起来来自多个地方
 
@@ -159,6 +178,8 @@ on_train_end
 6. optimizer step 后：记录一个 trainable parameter norm。
 
 不要在多 rank 首次练习；单卡 trace 清楚后再看 rank-specific 行为。
+
+更完整的固定行号、张量示例、断点与反例见[源码反推主实验](./source-walkthrough)。
 
 ## 通关标准
 

@@ -254,6 +254,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 .academy-heading h2, .academy-loop h2 { font-family: ui-serif, "Noto Serif SC", "Songti SC", Georgia, serif; font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1.18; letter-spacing: -0.045em; }
 .academy-heading p, .academy-loop > div > p:last-child { color: var(--lab-ink-soft); font-size: 15px; line-height: 1.75; }
 .track-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.track-grid > li:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .track-grid a { display: grid; position: relative; min-height: 310px; padding: 28px; border: 1px solid var(--lab-line); border-radius: 14px; overflow: hidden; color: var(--lab-ink) !important; background: var(--lab-card); text-decoration: none !important; transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
 .track-grid a::before { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--lab-teal); content: ""; transform: scaleX(0); transform-origin: left; transition: transform 180ms ease; }
 .track-grid a:hover { border-color: var(--lab-teal); box-shadow: var(--lab-shadow); transform: translateY(-4px); }
@@ -292,6 +293,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
   .academy-heading { grid-template-columns: 1fr; gap: 16px; }
   .academy-section { padding: 76px 0; }
   .track-grid { grid-template-columns: 1fr; }
+  .track-grid > li:last-child:nth-child(odd) { grid-column: auto; }
   .track-grid a { min-height: 286px; }
   .loop-track { padding: 20px; }
 }

@@ -1,6 +1,6 @@
 ---
 title: SGLang 学习地图与版本边界
-description: 四周完成 Runtime 地基、可验证实验、SRT 源码调用链和生产诊断
+description: 先选学习路线，再进入六周源码计划，完成 Runtime 原理、调用链、实验和生产诊断
 lesson:
   track: SGLang
   stage: 00 · 路线
@@ -11,7 +11,7 @@ lesson:
 
 # SGLang 学习地图与版本边界
 
-学习目标不是“会启动 SGLang”，而是能从一组请求预测：哪里匹配前缀、怎样形成 batch、哪些 KV slot 被占用、哪个进程执行模型，以及延迟为什么改变。本路线按四周、每周 5–7 小时设计。
+学习目标不是“会启动 SGLang”，而是能从一组请求预测：哪里匹配前缀、怎样形成 batch、哪些 KV slot 被占用、哪个进程执行模型，以及延迟为什么改变。本页给出四周压缩路线；要逐函数阅读、做实验并留下可复查证据，请以[六周源码学习计划](./study-plan)为主线，每周完成源码问题、实验和验收物。
 
 ## 当前版本边界
 
@@ -75,7 +75,7 @@ SGLang commit: c879f3da5ceaaef3cb197c4e59ce683d420ce96c
 
 ## 第 2 周：跑通并建立基线
 
-完成[第一台服务](../practice/first-server)和[基准、指标与调参](../practice/benchmark)。第一轮只保留最小配置，第二轮每次只改一个变量：
+完成[第一台服务](../practice/first-server)、[基准、指标与调参](../practice/benchmark)，再按[实验工作簿](../practice/lab-workbook)保存命令、原始结果和失败证据。第一轮只保留最小配置，第二轮每次只改一个变量：
 
 | 实验 | 自变量 | 至少记录 |
 | --- | --- | --- |
@@ -92,10 +92,12 @@ SGLang commit: c879f3da5ceaaef3cb197c4e59ce683d420ce96c
 按顺序阅读：
 
 1. [进程与通信架构](../internals/architecture)
-2. [一条请求的生命周期](../internals/request-lifecycle)
-3. [Scheduler 与 ScheduleBatch](../internals/scheduler)
-4. [RadixCache 与内存池](../internals/cache-pools)
-5. [ModelRunner 与执行后端](../internals/model-execution)
+2. [进程与消息逐跳追踪](../internals/message-flow)
+3. [一条请求的生命周期](../internals/request-lifecycle)
+4. [Scheduler 与 ScheduleBatch](../internals/scheduler)
+5. [Chunked Prefill 源码状态机](../internals/chunked-prefill)
+6. [RadixCache 与内存池](../internals/cache-pools)
+7. [ModelRunner 与执行后端](../internals/model-execution)
 
 始终维护同一张表：
 
@@ -112,7 +114,7 @@ SGLang commit: c879f3da5ceaaef3cb197c4e59ce683d420ce96c
 
 ## 第 4 周：扩规模但保留因果关系
 
-读[并行、PD 与 HiCache](../advanced/distributed)、[结构化输出与 RL 接入](../advanced/features)和[生产诊断](../advanced/production)，完成一份容量说明：
+先用[并行、PD、HiCache 与 Ray](../advanced/distributed)建立选择边界，再分别深读[PD 与 HiCache 的 KV 状态机](../advanced/pd-hicache)、[结构化输出与 RL 接入](../advanced/features)、[RL rollout 生命周期](../advanced/rl-lifecycle)和[生产诊断](../advanced/production)，完成一份容量说明：
 
 ```text
 模型、精度与 revision：

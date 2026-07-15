@@ -35,7 +35,7 @@ flowchart LR
     A --> G
 ```
 
-固定源码的抽象入口是 [`BaseGrammarBackend`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/constrained/base_grammar_backend.py#L131)，编译与生命周期由 [`GrammarManager`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/constrained/grammar_manager.py#L26) 管理。Scheduler 创建 manager，batch result 路径应用 mask 并接受采样结果。
+固定源码的抽象入口是 [`BaseGrammarBackend`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/constrained/base_grammar_backend.py#L131)，编译队列与生命周期由 [`GrammarManager`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/constrained/grammar_manager.py#L26) 管理。真正的采样前屏蔽在 [`ModelRunner._preprocess_logits()`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/model_executor/model_runner.py#L1384) 调用 `SamplingBatchInfo.update_regex_vocab_mask()`，采样结果返回后才推进 grammar state。
 
 ### Grammar 能保证什么，不能保证什么
 
@@ -114,6 +114,8 @@ flowchart LR
 7. rollout 结果携带 weight version，训练侧拒绝混版样本。
 
 固定源码中，TokenizerManager 暴露控制入口；Scheduler 侧由 [`WeightUpdaterManager`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/managers/scheduler_components/weight_updater.py#L74) 协调，模型执行侧的更新接口见 [`model_runner_components/weight_updater.py`](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/python/sglang/srt/model_executor/model_runner_components/weight_updater.py#L36)。
+
+这只是边界概览。pause 的 `abort/retract/in_place` 差别、读写锁、磁盘/tensor/distributed 三种换权路径、KV 失效与验权顺序，见[RL rollout 生命周期](./rl-lifecycle)。固定版本官方[训练后端集成文档](https://github.com/sgl-project/sglang/blob/c879f3da5ceaaef3cb197c4e59ce683d420ce96c/docs_new/docs/references/post_training_integration.mdx)明确列出 veRL 的模块化 SGLang 集成；veRL 负责训练/rollout 编排，SGLang 是其中的生成引擎，不是从课程中消失了。
 
 ### 释放显存与停止计算不是一回事
 

@@ -287,4 +287,6 @@ sequenceDiagram
 
 ## 通关标准
 
-你需要能回答：TP/PP/DP 分别切什么；Ray actor 与 vLLM worker 的关系；placement group 为什么必要；Ray 与 NCCL 各负责哪段；两个 Ray backend 参数的范围；以及一个 pending actor 和一个 NCCL hang 应该看不同证据。下一阶段进入[高级优化特性](../advanced/features)。
+你需要能回答：TP/PP/DP 分别切什么；Ray actor 与 vLLM worker 的关系；placement group 为什么必要；Ray 与 NCCL 各负责哪段；两个 Ray backend 参数的范围；以及一个 pending actor 和一个 NCCL hang 应该看不同证据。
+
+概念通过后，用[分布式实战](../practice/distributed-lab)从单卡、TP/mp、TP/Ray 一直验收到 PP、DP 与多节点；每一层都保留 rank、placement、NCCL 和性能证据。完成实验后再进入[高级优化特性](../advanced/features)。

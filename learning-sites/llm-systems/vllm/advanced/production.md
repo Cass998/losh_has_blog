@@ -86,7 +86,7 @@ $$
 
 一个 p99 TTFT PromQL 形态如下，实际要保留 model/engine/workload labels：
 
-```promql
+```text
 histogram_quantile(
   0.99,
   sum by (le) (rate(vllm:time_to_first_token_seconds_bucket[5m]))

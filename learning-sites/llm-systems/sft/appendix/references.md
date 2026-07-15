@@ -11,7 +11,20 @@ lesson:
 
 # SFT 源码、官方文档、论文与术语
 
-本课程绑定 TRL [`f3adc50`](https://github.com/huggingface/trl/tree/f3adc504b93d634666c5628e7bdaa99ec8861028) 与 Transformers [`e52d0fd`](https://github.com/huggingface/transformers/tree/e52d0fd6fa9eb874f7c2da048198276b04c919b9)。训练行为还依赖 PyTorch、Accelerate、Datasets、PEFT、quant/kernel 后端和 model remote code；课程固定两条主线不等于完整环境已固定。
+本课程主线绑定 TRL [`f3adc50`](https://github.com/huggingface/trl/tree/f3adc504b93d634666c5628e7bdaa99ec8861028) 与 Transformers [`e52d0fd`](https://github.com/huggingface/transformers/tree/e52d0fd6fa9eb874f7c2da048198276b04c919b9)。为核对 adapter、数据容器与分布式调用，本课程还读取 PEFT [`cea8213`](https://github.com/huggingface/peft/tree/cea8213158c8b682acc0839405c2062d57fdf867)、Datasets [`41adfd0`](https://github.com/huggingface/datasets/tree/41adfd0f9ee9ba3a6b4f719d5b551c5b19ae45e2) 和 Accelerate [`665444c`](https://github.com/huggingface/accelerate/tree/665444ceb62211f2b410d0d0fdb4bc013c5effdf)，并在 DeepSpeed [`53a2ac4`](https://github.com/deepspeedai/DeepSpeed/tree/53a2ac44fb664bea838df3981ba4366b91643070) 上核对 ZeRO 配置。训练行为还依赖 PyTorch、bitsandbytes、kernel、模型 revision 与 remote code；固定源码主线不等于完整环境已固定。
+
+## 源码快照清单
+
+| 项目 | 固定提交 | 本课程实际追踪的责任 |
+| --- | --- | --- |
+| TRL | [`f3adc504`](https://github.com/huggingface/trl/tree/f3adc504b93d634666c5628e7bdaa99ec8861028) | SFTConfig、trainer 初始化、dataset/mask/packing、SFT metrics/chunked NLL |
+| Transformers | [`e52d0fd6`](https://github.com/huggingface/transformers/tree/e52d0fd6fa9eb874f7c2da048198276b04c919b9) | chat template、Trainer loop、causal LM loss、quantization config |
+| PEFT | [`cea82131`](https://github.com/huggingface/peft/tree/cea8213158c8b682acc0839405c2062d57fdf867) | LoRA 注入/forward、k-bit preparation、adapter save/merge |
+| Datasets | [`41adfd0f`](https://github.com/huggingface/datasets/tree/41adfd0f9ee9ba3a6b4f719d5b551c5b19ae45e2) | `Dataset.from_list`、map/filter/cache 与 JSON/Arrow 数据容器 |
+| Accelerate | [`665444ce`](https://github.com/huggingface/accelerate/tree/665444ceb62211f2b410d0d0fdb4bc013c5effdf) | prepare、accumulate/no-sync、backward、clip、state dict |
+| DeepSpeed | [`53a2ac44`](https://github.com/deepspeedai/DeepSpeed/tree/53a2ac44fb664bea838df3981ba4366b91643070) | ZeRO stage、offload 与 engine 边界 |
+
+这些提交是“阅读快照”，不是宣称五个仓库在任意安装方式下都兼容。实践时必须保存 `pip freeze`，并以实际安装源码重复定位。
 
 ## 证据优先级
 
@@ -33,7 +46,7 @@ lesson:
 | Text collator | [`DataCollatorForLanguageModeling`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L394) |
 | VLM collator | [`DataCollatorForVisionLanguageModeling`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L542) |
 | Dataset preparation | [`_prepare_dataset`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1374) |
-| Packing | [`pack_dataset`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/data_utils.py#L846) |
+| Packing | [`pack_dataset`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/data_utils.py#L843) |
 | Chunked CE | [`_chunked_cross_entropy_loss`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L117) |
 | Loss/metrics | [`SFTTrainer.compute_loss`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/sft_trainer.py#L1699) |
 | Shared base trainer | [`base_trainer.py`](https://github.com/huggingface/trl/blob/f3adc504b93d634666c5628e7bdaa99ec8861028/trl/trainer/base_trainer.py#L65) |
@@ -52,6 +65,43 @@ lesson:
 | Save | [`save_model`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/trainer.py#L3780) |
 | Chat template API | [`apply_chat_template`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/tokenization_utils_base.py#L3002) |
 | Generic LM collator | [`data_collator.py`](https://github.com/huggingface/transformers/blob/e52d0fd6fa9eb874f7c2da048198276b04c919b9/src/transformers/data/data_collator.py#L619) |
+
+## 固定 PEFT / Accelerate 源码地图
+
+| 主题 | 固定入口 | 读源码时要回答 |
+| --- | --- | --- |
+| `get_peft_model` | [`mapping_func.py#L30`](https://github.com/huggingface/peft/blob/cea8213158c8b682acc0839405c2062d57fdf867/src/peft/mapping_func.py#L30) | wrapper 是否原地改 model；base revision 怎样写入 config |
+| `LoraConfig` | [`config.py#L373`](https://github.com/huggingface/peft/blob/cea8213158c8b682acc0839405c2062d57fdf867/src/peft/tuners/lora/config.py#L373) | target 的匹配规则、rank/alpha、`modules_to_save` |
+| LoRA forward | [`layer.py#L1030`](https://github.com/huggingface/peft/blob/cea8213158c8b682acc0839405c2062d57fdf867/src/peft/tuners/lora/layer.py#L1030) | `base(x)+B(A(dropout(x)))*scale` 在何时执行 |
+| k-bit preparation | [`other.py#L151`](https://github.com/huggingface/peft/blob/cea8213158c8b682acc0839405c2062d57fdf867/src/peft/utils/other.py#L151) | base freeze、dtype、input grad、gradient checkpointing |
+| adapter save | [`peft_model.py#L212`](https://github.com/huggingface/peft/blob/cea8213158c8b682acc0839405c2062d57fdf867/src/peft/peft_model.py#L212) | 保存的是 adapter 还是完整 base |
+| merge/unload | [`tuners_utils.py#L696`](https://github.com/huggingface/peft/blob/cea8213158c8b682acc0839405c2062d57fdf867/src/peft/tuners/tuners_utils.py#L696) | 返回值必须接住；何时能合并 |
+| `Accelerator.prepare` | [`accelerator.py#L1414`](https://github.com/huggingface/accelerate/blob/665444ceb62211f2b410d0d0fdb4bc013c5effdf/src/accelerate/accelerator.py#L1414) | model/optimizer/dataloader 怎样按 backend 包装 |
+| `Accelerator.backward` | [`accelerator.py#L2818`](https://github.com/huggingface/accelerate/blob/665444ceb62211f2b410d0d0fdb4bc013c5effdf/src/accelerate/accelerator.py#L2818) | 普通、DeepSpeed、scaler 分支怎样选 |
+| distributed state dict | [`accelerator.py#L4002`](https://github.com/huggingface/accelerate/blob/665444ceb62211f2b410d0d0fdb4bc013c5effdf/src/accelerate/accelerator.py#L4002) | FSDP/DeepSpeed 保存何时 gather |
+
+## 本地复核这些提交
+
+```bash
+git clone https://github.com/huggingface/trl.git
+git -C trl checkout f3adc504b93d634666c5628e7bdaa99ec8861028
+git clone https://github.com/huggingface/transformers.git
+git -C transformers checkout e52d0fd6fa9eb874f7c2da048198276b04c919b9
+git clone https://github.com/huggingface/peft.git
+git -C peft checkout cea8213158c8b682acc0839405c2062d57fdf867
+git clone https://github.com/huggingface/accelerate.git
+git -C accelerate checkout 665444ceb62211f2b410d0d0fdb4bc013c5effdf
+git clone https://github.com/huggingface/datasets.git
+git -C datasets checkout 41adfd0f9ee9ba3a6b4f719d5b551c5b19ae45e2
+
+git -C trl status --short
+git -C transformers status --short
+git -C peft status --short
+git -C accelerate status --short
+git -C datasets status --short
+```
+
+五次 `status --short` 都应为空。若不能 checkout，先确认 commit 是否完整拉取；不要用当前 `main` 替代后仍沿用本站行号。
 
 ## 同提交官方文档
 

@@ -40,6 +40,11 @@ lesson:
 | Executor interface / backends | [`executor/abstract.py`](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/vllm/v1/executor/abstract.py)、[`executor/`](https://github.com/vllm-project/vllm/tree/61141ed265bfef41a0ca19e992567ea980919b96/vllm/v1/executor) |
 | GPU Worker | [`gpu_worker.py`](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/vllm/v1/worker/gpu_worker.py#L130) |
 | ModelRunner V1 / V2 | [`gpu_model_runner.py`](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/vllm/v1/worker/gpu_model_runner.py#L446)、[`gpu/model_runner.py`](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/vllm/v1/worker/gpu/model_runner.py#L120) |
+| Attention layer / KV backend dispatch | [`attention.py`](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/vllm/model_executor/layers/attention/attention.py#L486) |
+| Llama model forward | [`models/llama.py`](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/vllm/model_executor/models/llama.py#L400) |
+| Tensor-parallel linear | [`layers/linear.py`](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/vllm/model_executor/layers/linear.py#L395) |
+| Sampling | [`sample/sampler.py`](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/vllm/v1/sample/sampler.py) |
+| Ray executor | [`ray_executor.py`](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/vllm/v1/executor/ray_executor.py#L143) |
 | Metrics | [`v1/metrics/loggers.py`](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/vllm/v1/metrics/loggers.py) |
 
 ## 官方设计与使用文档
@@ -54,9 +59,21 @@ lesson:
 - [CUDA Graph Modes](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/docs/design/cuda_graphs.md)
 - [Optimization and Tuning](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/docs/configuration/optimization.md)
 - [Parallelism and Scaling](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/docs/serving/parallelism_scaling.md)
+- [Data Parallel Deployment](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/docs/serving/data_parallel_deployment.md)
 - [Production Metrics](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/docs/usage/metrics.md)
 - [Benchmark CLI](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/docs/benchmarking/cli.md)
+- [Profiling vLLM](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/docs/contributing/profiling.md)
 - [Security](https://github.com/vllm-project/vllm/blob/61141ed265bfef41a0ca19e992567ea980919b96/docs/usage/security.md)
+
+## 本站深读入口
+
+| 目标 | 课程 |
+| --- | --- |
+| 按天完成源码、原理、实验和验收 | [30 日六阶段源码学习计划](../guide/study-plan) |
+| 从 HTTP 请求逐函数追到 SSE 输出 | [固定提交完整调用链](../internals/full-code-path) |
+| 从 SchedulerOutput 追到 Llama、KV、logits 与 sampler | [模型 forward、Paged KV 与采样](../internals/model-forward-sampling) |
+| 用测试、指标和 profile 证明实际运行路径 | [源码跟踪实验](../practice/source-lab) |
+| 逐级验证 TP、PP、DP、Ray 与多节点 | [分布式实战](../practice/distributed-lab) |
 
 ## 核心论文
 
