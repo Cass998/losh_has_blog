@@ -1,6 +1,6 @@
 # LLM 系统学习实验室
 
-五条独立但互相连接的中文课程：vLLM、SGLang、SFT、veRL，以及以 FSDP2、Megatron Core 为主线的分布式训练。veRL 不是孤立附录：课程会把 SFT 初始权重、vLLM/SGLang rollout、Ray 控制面和 FSDP/Megatron 训练后端接成一条链。
+一条共同基础与五条互相连接的中文课程：先从 Transformer 和 KV Cache 建立张量、生成与缓存心智，再进入 vLLM、SGLang、SFT、veRL，以及以 FSDP2、Megatron Core 为主线的分布式训练。veRL 不是孤立附录：课程会把 SFT 初始权重、vLLM/SGLang rollout、Ray 控制面和 FSDP/Megatron 训练后端接成一条链。
 
 ## 本地运行
 

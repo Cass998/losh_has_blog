@@ -11,6 +11,10 @@ lesson:
 
 # KV Cache 与 PagedAttention：先算清显存，再理解分页
 
+::: tip 共同基础
+如果还不能解释“为什么只缓存 K/V、为什么 decode 每步仍读取全部历史”，先完成 [Transformer 与 KV Cache 共同基础](../../foundations/)；本页专注服务系统中的分页、复用和抢占。
+:::
+
 PagedAttention 常被概括为“像操作系统虚拟内存一样管理 KV Cache”。真正要掌握的不是比喻，而是三件事：一个 token 占多少 KV、为什么连续序列不必占连续物理内存、缓存 block 的所有权怎样随请求和共享前缀变化。
 
 ## 先算每个 token 的 KV

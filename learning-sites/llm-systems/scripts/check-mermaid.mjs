@@ -8,7 +8,7 @@ if (typeof DOMPurify.addHook !== 'function') {
 }
 
 const { default: mermaid } = await import('mermaid')
-const roots = ['vllm', 'sglang', 'sft', 'distributed', 'verl']
+const roots = ['foundations', 'vllm', 'sglang', 'sft', 'distributed', 'verl']
 const files = []
 
 function collect(directory) {

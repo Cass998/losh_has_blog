@@ -19,6 +19,26 @@ const commits = {
 
 const basePath = process.env.BASE_PATH || '/'
 
+const foundationsSidebar = [
+  {
+    text: '00 · 共同基础',
+    items: [
+      { text: '14 天学习入口', link: '/foundations/' },
+      { text: 'Transformer：张量到源码', link: '/foundations/transformer' },
+      { text: 'KV Cache：原理到实验', link: '/foundations/kv-cache' }
+    ]
+  },
+  {
+    text: '01 · 进入工程系统',
+    items: [
+      { text: 'vLLM：PagedAttention', link: '/vllm/fundamentals/kv-cache' },
+      { text: 'SGLang：RadixAttention', link: '/sglang/fundamentals/radix-attention' },
+      { text: 'SFT：Teacher Forcing', link: '/sft/fundamentals/objective' },
+      { text: 'veRL：LLM 如何成为策略', link: '/verl/fundamentals/llm' }
+    ]
+  }
+]
+
 const vllmSidebar = [
   {
     text: '00 · 先找到主线',
@@ -278,7 +298,7 @@ export default withMermaid(
     lang: 'zh-CN',
     title: 'LLM 系统学习实验室',
     titleTemplate: ':title · LLM 系统学习实验室',
-    description: '从心智模型、最小实验到源码与生产诊断的 vLLM、SGLang、SFT、veRL 和分布式训练中文课程',
+    description: '从 Transformer、KV Cache 共同基础到 vLLM、SGLang、SFT、veRL 和分布式训练的中文源码课程',
     base: basePath,
     outDir: process.env.OUT_DIR || '.vitepress/dist',
     cleanUrls: true,
@@ -302,6 +322,7 @@ export default withMermaid(
       siteTitle: 'LLM 系统实验室',
       nav: [
         { text: '总览', link: '/' },
+        { text: '共同基础', link: '/foundations/' },
         { text: 'vLLM', link: '/vllm/' },
         { text: 'SGLang', link: '/sglang/' },
         { text: 'SFT', link: '/sft/' },
@@ -327,6 +348,7 @@ export default withMermaid(
         }
       ],
       sidebar: {
+        '/foundations/': foundationsSidebar,
         '/vllm/': vllmSidebar,
         '/sglang/': sglangSidebar,
         '/sft/': sftSidebar,

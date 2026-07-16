@@ -3,6 +3,14 @@ import { withBase } from 'vitepress'
 
 const tracks = [
   {
+    no: '00',
+    code: 'BASE',
+    title: 'Transformer 与 KV Cache',
+    question: 'Q/K/V 如何构成因果注意力，为什么历史 K/V 可以复用且会成为显存瓶颈？',
+    detail: 'tensor shapes · RoPE · GQA · prefill/decode · cache equivalence',
+    link: '/foundations/'
+  },
+  {
     no: '01',
     code: 'SERVE',
     title: 'vLLM',
@@ -51,9 +59,9 @@ const tracks = [
       <div>
         <p class="academy-kicker"><span>SYSTEMS COURSE</span> 固定源码 · 实验驱动</p>
         <h1 id="academy-title">不要背参数，<br><em>追踪系统。</em></h1>
-        <p class="academy-lead">五条面向 LLM 工程师的中文学习路线。每个概念先用可计算的直觉解释，再落到张量、进程、通信、源码与可复现实验。</p>
-        <a class="academy-button" :href="withBase('/vllm/')">
-          从 vLLM 开始
+        <p class="academy-lead">一条共同基础与五条 LLM 工程路线。每个概念先用可计算的直觉解释，再落到张量、进程、通信、源码与可复现实验。</p>
+        <a class="academy-button" :href="withBase('/foundations/')">
+          从共同基础开始
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
         </a>
       </div>
@@ -69,10 +77,10 @@ const tracks = [
     </section>
 
     <section class="academy-section" aria-labelledby="tracks-title">
-      <p class="academy-eyebrow">FIVE LEARNING TRACKS</p>
+      <p class="academy-eyebrow">ONE FOUNDATION · FIVE TRACKS</p>
       <div class="academy-heading">
-        <h2 id="tracks-title">五个入口，一条端到端闭环</h2>
-        <p>SFT 产出初始策略，veRL 借助 vLLM/SGLang 收集轨迹并更新权重；训练和 rollout 的规模上限又由并行、显存与通信共同决定。</p>
+        <h2 id="tracks-title">共同地基，五条工程路线</h2>
+        <p>Transformer 与 KV Cache 解释模型和生成；SFT 产出初始策略，veRL 借助 vLLM/SGLang 收集轨迹并更新权重，分布式系统负责扩展训练与推理。</p>
       </div>
       <ol class="track-grid">
         <li v-for="track in tracks" :key="track.no">
@@ -91,10 +99,11 @@ const tracks = [
     <section class="academy-section academy-loop" aria-labelledby="loop-title">
       <div>
         <p class="academy-eyebrow">ONE END-TO-END LOOP</p>
-        <h2 id="loop-title">把五门课接成一条链</h2>
-        <p>数据先完成 SFT 冷启动；veRL 用推理后端生成轨迹、计算奖励并更新策略；FSDP 或 Megatron 承担跨 GPU 训练；新权重进入服务后，线上指标再反馈给下一轮数据与训练。</p>
+        <h2 id="loop-title">把基础与五门课接成一条链</h2>
+        <p>先用 Transformer 与 KV Cache 建立模型心智；数据完成 SFT 冷启动，veRL 用推理后端生成轨迹并更新策略，分布式后端扩展计算，新权重进入服务后再由指标反馈。</p>
       </div>
       <div class="loop-track" role="img" aria-label="数据经过 SFT 冷启动，由 veRL 使用推理后端采样并强化学习更新，分布式训练负责扩展计算，新权重进入服务后产生指标反馈">
+        <div><span>BASE</span><strong>模型与缓存</strong></div><i></i>
         <div><span>DATA</span><strong>样本与模板</strong></div><i></i>
         <div><span>SFT</span><strong>监督冷启动</strong></div><i></i>
         <div><span>ALIGN</span><strong>veRL 采样与更新</strong></div><i></i>
