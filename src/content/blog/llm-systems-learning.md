@@ -2,6 +2,7 @@
 title: 'LLM 系统学习实验室：vLLM、SGLang、SFT、veRL 与分布式训练'
 description: '五条从心智模型、最小实验走到固定版本源码与生产排障的中文学习路线。'
 pubDate: '2026-07-16'
+updatedDate: '2026-07-16'
 tags: ['LLM', 'vLLM', 'SGLang', 'SFT', 'veRL', '分布式训练']
 ---
 

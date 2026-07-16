@@ -2,6 +2,7 @@
 title: 'veRL 强化学习与源码学习实验室'
 description: '从零理解强化学习，完成第一个 veRL 实验，再沿 V1 源码走到自定义算法与性能优化。'
 pubDate: '2026-07-14'
+updatedDate: '2026-07-16'
 tags: ['veRL', '强化学习', '源码阅读']
 ---
 
