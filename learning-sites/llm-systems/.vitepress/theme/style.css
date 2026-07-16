@@ -148,6 +148,91 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
   border-radius: 14px;
   background: var(--lab-card);
 }
+.vp-doc img[data-lightbox-ready],
+.vp-doc .mermaid svg[data-lightbox-ready] {
+  cursor: zoom-in;
+}
+.vp-doc img[data-lightbox-ready]:focus-visible,
+.vp-doc .mermaid svg[data-lightbox-ready]:focus-visible {
+  outline: 3px solid var(--lab-coral);
+  outline-offset: 4px;
+}
+body.lightbox-open { overflow: hidden; }
+.image-lightbox {
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  color: #fff;
+  background: rgba(5, 13, 17, 0.92);
+}
+.image-lightbox::backdrop { background: transparent; }
+.image-lightbox__stage {
+  display: flex;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;
+}
+.image-lightbox__media {
+  width: min(92vw, 1600px);
+  height: min(82dvh, 1200px);
+  object-fit: contain;
+  transform-origin: center;
+  transition: transform 120ms ease-out;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.image-lightbox__toolbar {
+  display: flex;
+  position: absolute;
+  z-index: 10;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  gap: 8px;
+}
+.image-lightbox__toolbar button {
+  display: inline-flex;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(20, 37, 43, 0.88);
+  font: 700 14px/1 var(--vp-font-family-base);
+  cursor: pointer;
+}
+.image-lightbox__toolbar button:hover { background: rgba(41, 68, 75, 0.96); }
+.image-lightbox__toolbar button:focus-visible { outline-color: var(--lab-yellow); }
+.image-lightbox__toolbar svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+.image-lightbox__hint {
+  position: absolute;
+  z-index: 10;
+  right: 16px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 16px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}
 .vp-doc blockquote {
   margin: 1.5rem 0;
   padding: 1rem 1.2rem;
@@ -301,7 +386,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 @media print {
-  .VPNav, .VPSidebar, .VPDocAside, .VPLocalNav { display: none !important; }
+  .VPNav, .VPSidebar, .VPDocAside, .VPLocalNav, .image-lightbox { display: none !important; }
   .VPContent, .VPDoc { padding: 0 !important; }
   .VPDoc .content-container { max-width: none !important; }
 }
