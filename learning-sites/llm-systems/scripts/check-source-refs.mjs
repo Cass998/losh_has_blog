@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const siteRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const contentRoots = ['llvm', 'vllm', 'sglang', 'sft', 'distributed', 'verl']
+const contentRoots = ['ai-infra', 'llvm', 'vllm', 'sglang', 'sft', 'distributed', 'verl']
 const markdownFiles = contentRoots.flatMap((root) =>
   readdirSync(join(siteRoot, root), { recursive: true })
     .filter((entry) => entry.endsWith('.md'))

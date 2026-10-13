@@ -90,46 +90,47 @@ const vllmSidebar = [
 ]
 
 const llvmSidebar = [
+  { text: 'AI Infra', items: [{ text: '基础设施学习入口', link: '/ai-infra/' }] },
   {
     text: '00 · 建立全局地图',
     items: [
-      { text: 'LLVM 学习入口', link: '/llvm/' },
-      { text: '六周学习路线', link: '/llvm/guide/learning-path' },
-      { text: '源码地图与阅读方法', link: '/llvm/guide/source-map' }
+      { text: 'LLVM 学习入口', link: '/ai-infra/llvm/' },
+      { text: '六周学习路线', link: '/ai-infra/llvm/guide/learning-path' },
+      { text: '源码地图与阅读方法', link: '/ai-infra/llvm/guide/source-map' }
     ]
   },
   {
     text: '01 · 系统架构',
     items: [
-      { text: '编译器完整流水线', link: '/llvm/architecture/compiler-pipeline' },
-      { text: 'LLVM IR、SelectionDAG 与 MIR', link: '/llvm/architecture/ir-dag-mir' },
-      { text: 'Target 后端的组成', link: '/llvm/architecture/target-backend' }
+      { text: '编译器完整流水线', link: '/ai-infra/llvm/architecture/compiler-pipeline' },
+      { text: 'LLVM IR、SelectionDAG 与 MIR', link: '/ai-infra/llvm/architecture/ir-dag-mir' },
+      { text: 'Target 后端的组成', link: '/ai-infra/llvm/architecture/target-backend' }
     ]
   },
   {
     text: '02 · 沿源码走主线',
     items: [
-      { text: 'Clang 前端：源码到 IR', link: '/llvm/source/clang-frontend' },
-      { text: 'Pass 与优化流水线', link: '/llvm/source/pass-pipeline' },
-      { text: '指令选择与 TableGen', link: '/llvm/source/instruction-selection' },
-      { text: '寄存器分配与 spill', link: '/llvm/source/register-allocation' },
-      { text: 'MC、汇编与目标文件', link: '/llvm/source/mc-object' }
+      { text: 'Clang 前端：源码到 IR', link: '/ai-infra/llvm/source/clang-frontend' },
+      { text: 'Pass 与优化流水线', link: '/ai-infra/llvm/source/pass-pipeline' },
+      { text: '指令选择与 TableGen', link: '/ai-infra/llvm/source/instruction-selection' },
+      { text: '寄存器分配与 spill', link: '/ai-infra/llvm/source/register-allocation' },
+      { text: 'MC、汇编与目标文件', link: '/ai-infra/llvm/source/mc-object' }
     ]
   },
   {
     text: '03 · 工具与实验',
     items: [
-      { text: 'Clang、GCC 与编译阶段', link: '/llvm/tools/clang-gcc' },
-      { text: 'GDB 调试 LLVM', link: '/llvm/tools/gdb' },
-      { text: 'objdump、readelf 与 nm', link: '/llvm/tools/object-tools' },
-      { text: 'lit、FileCheck 与 MIR', link: '/llvm/tools/testing' }
+      { text: 'Clang、GCC 与编译阶段', link: '/ai-infra/llvm/tools/clang-gcc' },
+      { text: 'GDB 调试 LLVM', link: '/ai-infra/llvm/tools/gdb' },
+      { text: 'objdump、readelf 与 nm', link: '/ai-infra/llvm/tools/object-tools' },
+      { text: 'lit、FileCheck 与 MIR', link: '/ai-infra/llvm/tools/testing' }
     ]
   },
   {
     text: '04 · Q&A',
     items: [
-      { text: '问答索引', link: '/llvm/qa/' },
-      { text: 'builtin 如何变成机器指令', link: '/llvm/qa/builtin-to-instruction' }
+      { text: '问答索引', link: '/ai-infra/llvm/qa/' },
+      { text: 'builtin 如何变成机器指令', link: '/ai-infra/llvm/qa/builtin-to-instruction' }
     ]
   }
 ]
@@ -369,7 +370,7 @@ export default withMermaid(
       nav: [
         { text: '总览', link: '/' },
         { text: '共同基础', link: '/foundations/' },
-        { text: 'LLVM', link: '/llvm/' },
+        { text: 'AI Infra', link: '/ai-infra/' },
         { text: 'vLLM', link: '/vllm/' },
         { text: 'SGLang', link: '/sglang/' },
         { text: 'SFT', link: '/sft/' },
@@ -396,7 +397,8 @@ export default withMermaid(
         }
       ],
       sidebar: {
-        '/llvm/': llvmSidebar,
+        '/ai-infra/': [{ text: 'AI Infra', items: [{ text: '基础设施学习入口', link: '/ai-infra/' }, { text: 'LLVM 编译系统', link: '/ai-infra/llvm/' }] }],
+        '/ai-infra/llvm/': llvmSidebar,
         '/foundations/': foundationsSidebar,
         '/vllm/': vllmSidebar,
         '/sglang/': sglangSidebar,
