@@ -2,6 +2,7 @@ import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
 
 const commits = {
+  llvm: '2078da43e25a4623cab2d0d60decddf709aaea28',
   vllm: '61141ed265bfef41a0ca19e992567ea980919b96',
   sglang: 'c879f3da5ceaaef3cb197c4e59ce683d420ce96c',
   trl: 'f3adc504b93d634666c5628e7bdaa99ec8861028',
@@ -84,6 +85,51 @@ const vllmSidebar = [
       { text: '生产诊断与容量规划', link: '/vllm/advanced/production' },
       { text: 'TP/PP/DP/Ray 分布式实验', link: '/vllm/practice/distributed-lab' },
       { text: '源码、论文与术语', link: '/vllm/appendix/references' }
+    ]
+  }
+]
+
+const llvmSidebar = [
+  {
+    text: '00 · 建立全局地图',
+    items: [
+      { text: 'LLVM 学习入口', link: '/llvm/' },
+      { text: '六周学习路线', link: '/llvm/guide/learning-path' },
+      { text: '源码地图与阅读方法', link: '/llvm/guide/source-map' }
+    ]
+  },
+  {
+    text: '01 · 系统架构',
+    items: [
+      { text: '编译器完整流水线', link: '/llvm/architecture/compiler-pipeline' },
+      { text: 'LLVM IR、SelectionDAG 与 MIR', link: '/llvm/architecture/ir-dag-mir' },
+      { text: 'Target 后端的组成', link: '/llvm/architecture/target-backend' }
+    ]
+  },
+  {
+    text: '02 · 沿源码走主线',
+    items: [
+      { text: 'Clang 前端：源码到 IR', link: '/llvm/source/clang-frontend' },
+      { text: 'Pass 与优化流水线', link: '/llvm/source/pass-pipeline' },
+      { text: '指令选择与 TableGen', link: '/llvm/source/instruction-selection' },
+      { text: '寄存器分配与 spill', link: '/llvm/source/register-allocation' },
+      { text: 'MC、汇编与目标文件', link: '/llvm/source/mc-object' }
+    ]
+  },
+  {
+    text: '03 · 工具与实验',
+    items: [
+      { text: 'Clang、GCC 与编译阶段', link: '/llvm/tools/clang-gcc' },
+      { text: 'GDB 调试 LLVM', link: '/llvm/tools/gdb' },
+      { text: 'objdump、readelf 与 nm', link: '/llvm/tools/object-tools' },
+      { text: 'lit、FileCheck 与 MIR', link: '/llvm/tools/testing' }
+    ]
+  },
+  {
+    text: '04 · Q&A',
+    items: [
+      { text: '问答索引', link: '/llvm/qa/' },
+      { text: 'builtin 如何变成机器指令', link: '/llvm/qa/builtin-to-instruction' }
     ]
   }
 ]
@@ -298,7 +344,7 @@ export default withMermaid(
     lang: 'zh-CN',
     title: 'LLM 系统学习实验室',
     titleTemplate: ':title · LLM 系统学习实验室',
-    description: '从 Transformer、KV Cache 共同基础到 vLLM、SGLang、SFT、veRL 和分布式训练的中文源码课程',
+    description: '从 LLVM 编译器、Transformer、KV Cache 到 vLLM、SGLang、SFT、veRL 和分布式训练的中文源码课程',
     base: basePath,
     outDir: process.env.OUT_DIR || '.vitepress/dist',
     cleanUrls: true,
@@ -323,6 +369,7 @@ export default withMermaid(
       nav: [
         { text: '总览', link: '/' },
         { text: '共同基础', link: '/foundations/' },
+        { text: 'LLVM', link: '/llvm/' },
         { text: 'vLLM', link: '/vllm/' },
         { text: 'SGLang', link: '/sglang/' },
         { text: 'SFT', link: '/sft/' },
@@ -331,6 +378,7 @@ export default withMermaid(
         {
           text: '固定源码',
           items: [
+            { text: `LLVM ${commits.llvm.slice(0, 7)}`, link: `https://github.com/llvm/llvm-project/tree/${commits.llvm}` },
             { text: `vLLM ${commits.vllm.slice(0, 7)}`, link: `https://github.com/vllm-project/vllm/tree/${commits.vllm}` },
             { text: `SGLang ${commits.sglang.slice(0, 7)}`, link: `https://github.com/sgl-project/sglang/tree/${commits.sglang}` },
             { text: `TRL ${commits.trl.slice(0, 7)}`, link: `https://github.com/huggingface/trl/tree/${commits.trl}` },
@@ -348,6 +396,7 @@ export default withMermaid(
         }
       ],
       sidebar: {
+        '/llvm/': llvmSidebar,
         '/foundations/': foundationsSidebar,
         '/vllm/': vllmSidebar,
         '/sglang/': sglangSidebar,

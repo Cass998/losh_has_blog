@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const siteRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const contentRoots = ['vllm', 'sglang', 'sft', 'distributed', 'verl']
+const contentRoots = ['llvm', 'vllm', 'sglang', 'sft', 'distributed', 'verl']
 
 function markdownFiles(directory) {
   if (!existsSync(directory)) return []

@@ -3,6 +3,14 @@ import { withBase } from 'vitepress'
 
 const tracks = [
   {
+    no: 'C0',
+    code: 'COMPILE',
+    title: 'LLVM',
+    question: '一段 C/C++ 如何经过前端、IR、优化、指令选择与寄存器分配，变成目标机器码？',
+    detail: 'Clang · IR · SelectionDAG · MIR · TableGen · GDB · objdump',
+    link: '/llvm/'
+  },
+  {
     no: '00',
     code: 'BASE',
     title: 'Transformer 与 KV Cache',
